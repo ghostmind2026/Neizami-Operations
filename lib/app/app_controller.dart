@@ -20,7 +20,7 @@ class AppController extends ChangeNotifier {
     loading = true;
     notifyListeners();
     final token = await sessions.readToken();
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       try {
         await loadBootstrap();
       } catch (_) {
@@ -44,9 +44,20 @@ class AppController extends ChangeNotifier {
           'platform': 'android',
         },
       });
-      await sessions.saveToken('${data['token']}');
+
+      final tokenPayload = data['token'];
+      final accessToken = tokenPayload is Map
+          ? '${tokenPayload['access_token'] ?? ''}'.trim()
+          : '${data['access_token'] ?? tokenPayload ?? ''}'.trim();
+
+      if (accessToken.isEmpty || accessToken == 'null') {
+        throw const ApiException('استجابة تسجيل الدخول لا تحتوي رمز دخول صالحًا.');
+      }
+
+      await sessions.saveToken(accessToken);
       await loadBootstrap();
     } catch (exception) {
+      await sessions.clear();
       error = '$exception';
       rethrow;
     } finally {
