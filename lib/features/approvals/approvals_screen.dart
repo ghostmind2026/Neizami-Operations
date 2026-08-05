@@ -104,7 +104,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? const ListView(children: [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
+            ? ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
             : _error != null
                 ? ListView(
                     padding: const EdgeInsets.all(20),
@@ -116,8 +116,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                     ],
                   )
                 : _items.isEmpty
-                    ? const ListView(
-                        children: [
+                    ? ListView(
+                        children: const [
                           SizedBox(height: 170),
                           Icon(Icons.fact_check_outlined, size: 54),
                           SizedBox(height: 12),
