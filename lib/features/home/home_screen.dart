@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_controller.dart';
+import '../approvals/approvals_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,10 +14,7 @@ class HomeScreen extends StatelessWidget {
     final bootstrap = app.bootstrap!;
     final branding = bootstrap.branding;
     final badges = app.dashboardBadges;
-    final employeeName = _employeeName(
-      bootstrap.employee,
-      bootstrap.user,
-    );
+    final employeeName = _employeeName(bootstrap.employee, bootstrap.user);
     final jobTitle = _firstText(bootstrap.employee, const [
       'job_title',
       'employee_job_title',
@@ -38,6 +37,10 @@ class HomeScreen extends StatelessWidget {
                 jobTitle: jobTitle,
                 notificationCount: _count(badges['notifications']),
                 loading: app.refreshingDashboard,
+                onNotifications: () => _open(
+                  context,
+                  const NotificationsScreen(),
+                ),
                 onLogout: app.logout,
               ),
               const SizedBox(height: 22),
@@ -75,28 +78,40 @@ class HomeScreen extends StatelessWidget {
                     label: 'النجوم',
                     value: _count(badges['stars']),
                     accent: branding.warning,
-                    onTap: () => _showSoon(context, 'النجوم'),
+                    onTap: () => _open(
+                      context,
+                      const NotificationsScreen(scope: 'month'),
+                    ),
                   ),
                   _MetricCard(
                     icon: Icons.warning_amber_rounded,
                     label: 'الكروت',
                     value: _count(badges['warning_cards']),
                     accent: branding.danger,
-                    onTap: () => _showSoon(context, 'الكروت'),
+                    onTap: () => _open(
+                      context,
+                      const NotificationsScreen(scope: 'month'),
+                    ),
                   ),
                   _MetricCard(
                     icon: Icons.schedule_rounded,
                     label: 'بانتظار المدير',
                     value: _count(badges['my_approvals']),
                     accent: branding.primary,
-                    onTap: () => _showSoon(context, 'طلباتي'),
+                    onTap: () => _open(
+                      context,
+                      const ApprovalsScreen(scope: 'mine'),
+                    ),
                   ),
                   _MetricCard(
                     icon: Icons.fact_check_outlined,
                     label: 'بانتظار موافقتي',
                     value: _count(badges['manager_approvals']),
                     accent: branding.success,
-                    onTap: () => _showSoon(context, 'الموافقات'),
+                    onTap: () => _open(
+                      context,
+                      const ApprovalsScreen(scope: 'awaiting'),
+                    ),
                   ),
                 ],
               ),
@@ -144,6 +159,12 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  static Future<void> _open(BuildContext context, Widget screen) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
     );
   }
 
@@ -198,6 +219,7 @@ class _Header extends StatelessWidget {
     required this.jobTitle,
     required this.notificationCount,
     required this.loading,
+    required this.onNotifications,
     required this.onLogout,
   });
 
@@ -206,6 +228,7 @@ class _Header extends StatelessWidget {
   final String jobTitle;
   final int notificationCount;
   final bool loading;
+  final VoidCallback onNotifications;
   final VoidCallback onLogout;
 
   @override
@@ -259,7 +282,7 @@ class _Header extends StatelessWidget {
           isLabelVisible: notificationCount > 0,
           label: Text('$notificationCount'),
           child: IconButton.filledTonal(
-            onPressed: () {},
+            onPressed: onNotifications,
             icon: const Icon(Icons.notifications_none_rounded),
           ),
         ),
