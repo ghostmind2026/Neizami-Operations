@@ -8,7 +8,7 @@ import 'core/models/bootstrap_data.dart';
 import 'core/storage/session_store.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
-import 'features/home/home_screen.dart';
+import 'features/shell/app_shell.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,11 +44,9 @@ class NeizamiApp extends StatelessWidget {
       home: Directionality(
         textDirection: branding.rtl ? TextDirection.rtl : TextDirection.ltr,
         child: app.loading
-            ? const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              )
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
             : app.authenticated
-                ? const HomeScreen()
+                ? const AppShell()
                 : const LoginScreen(),
       ),
     );
