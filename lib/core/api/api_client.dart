@@ -8,14 +8,17 @@ import '../storage/session_store.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
+
   final String message;
   final int? statusCode;
+
   @override
   String toString() => message;
 }
 
 class ApiClient {
   ApiClient(this.sessions);
+
   final SessionStore sessions;
 
   Future<Map<String, dynamic>> get(
@@ -38,21 +41,24 @@ class ApiClient {
     final token = await sessions.readToken();
     final headers = <String, String>{
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
     };
+
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
 
     try {
-      final uri = AppConfig.uri(path, query);
-      final response = method == 'GET'
-          ? await http.get(uri, headers: headers).timeout(const Duration(seconds: 30))
-          : await http
-              .post(uri, headers: headers, body: jsonEncode(body ?? {}))
-              .timeout(const Duration(seconds: 45));
+      final response = await _requestFollowingRedirects(
+        method: method,
+        initialUri: AppConfig.uri(path, query),
+        headers: headers,
+        encodedBody: method == 'GET' ? null : jsonEncode(body ?? {}),
+      );
 
-      final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+      final decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body);
       final envelope = decoded is Map<String, dynamic>
           ? decoded
           : <String, dynamic>{'data': decoded};
@@ -71,6 +77,55 @@ class ApiClient {
       throw const ApiException('تعذر الاتصال بالخادم. تحقق من الإنترنت.');
     } on FormatException {
       throw const ApiException('استجابة الخادم غير صالحة.');
+    } on http.ClientException catch (exception) {
+      throw ApiException('تعذر الاتصال بالخادم: ${exception.message}');
     }
+  }
+
+  Future<http.Response> _requestFollowingRedirects({
+    required String method,
+    required Uri initialUri,
+    required Map<String, String> headers,
+    required String? encodedBody,
+  }) async {
+    var uri = initialUri;
+
+    for (var redirectCount = 0; redirectCount <= 5; redirectCount++) {
+      final request = http.Request(method, uri)
+        ..followRedirects = false
+        ..headers.addAll(headers);
+
+      if (encodedBody != null) {
+        request.body = encodedBody;
+      }
+
+      final streamed = await request.send().timeout(
+            method == 'GET'
+                ? const Duration(seconds: 30)
+                : const Duration(seconds: 45),
+          );
+      final response = await http.Response.fromStream(streamed);
+
+      if (!_isRedirect(response.statusCode)) {
+        return response;
+      }
+
+      final location = response.headers['location'];
+      if (location == null || location.trim().isEmpty) {
+        return response;
+      }
+
+      uri = uri.resolve(location.trim());
+    }
+
+    throw const ApiException('تجاوز الخادم عدد التحويلات المسموح بها.');
+  }
+
+  bool _isRedirect(int statusCode) {
+    return statusCode == 301 ||
+        statusCode == 302 ||
+        statusCode == 303 ||
+        statusCode == 307 ||
+        statusCode == 308;
   }
 }
