@@ -17,4 +17,14 @@ class AppConfig {
       queryParameters: query?.map((key, value) => MapEntry(key, '$value')),
     );
   }
+
+  static Uri restRouteUri(String path, [Map<String, dynamic>? query]) {
+    final cleanBase = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    final parameters = <String, String>{
+      'rest_route': '/neizami-mobile/v1$normalizedPath',
+      ...?query?.map((key, value) => MapEntry(key, '$value')),
+    };
+    return Uri.parse('$cleanBase/').replace(queryParameters: parameters);
+  }
 }
