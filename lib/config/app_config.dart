@@ -1,7 +1,7 @@
 class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'NEIZAMI_BASE_URL',
-    defaultValue: 'https://signalsjo.com',
+    defaultValue: 'https://signalsjo.com/pmo',
   );
 
   static const String appId = String.fromEnvironment(
