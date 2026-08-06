@@ -33,8 +33,11 @@ class AppConfig {
     return Uri.parse('$cleanBase/').replace(
       queryParameters: {
         'nzmb_mobile_form': formKey,
+        'nzmb_renderer': 'light',
+        'nzmb_renderer_version': '13',
         'app_id': appId,
         'token': token,
+        '_': DateTime.now().millisecondsSinceEpoch.toString(),
       },
     );
   }
