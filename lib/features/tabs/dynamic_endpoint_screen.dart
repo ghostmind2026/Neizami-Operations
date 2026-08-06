@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +15,8 @@ class DynamicEndpointScreen extends StatefulWidget {
 }
 
 class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _payload;
@@ -23,6 +27,19 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 380), _load);
+    setState(() {});
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -30,7 +47,16 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
     });
     try {
       final api = context.read<AppController>().api;
-      final data = await api.get('/tabs/${widget.tab['key']}');
+      final query = _searchController.text.trim();
+      final data = await api.get(
+        '/tabs/${widget.tab['key']}',
+        query: query.isEmpty
+            ? null
+            : <String, dynamic>{
+                'q': query,
+                'search': query,
+              },
+      );
       if (!mounted) return;
       setState(() => _payload = data);
     } catch (error) {
@@ -44,23 +70,69 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
   @override
   Widget build(BuildContext context) {
     final title = '${widget.tab['label'] ?? widget.tab['key'] ?? ''}';
+    final branding = context.read<AppController>().bootstrap!.branding;
+
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton(onPressed: _load, child: const Text('إعادة المحاولة')),
-                    ],
-                  )
-                : _EndpointBody(payload: _payload ?? const {}),
+      body: Column(
+        children: [
+          Container(
+            color: branding.background,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _load(),
+              decoration: InputDecoration(
+                hintText: 'بحث سريع في $title',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'مسح البحث',
+                        onPressed: () {
+                          _searchController.clear();
+                          _load();
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _load,
+              child: _loading && _payload == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(24),
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: _load,
+                              child: const Text('إعادة المحاولة'),
+                            ),
+                          ],
+                        )
+                      : Stack(
+                          children: [
+                            _EndpointBody(payload: _payload ?? const {}),
+                            if (_loading)
+                              const Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: LinearProgressIndicator(minHeight: 2),
+                              ),
+                          ],
+                        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -89,7 +161,7 @@ class _EndpointBody extends StatelessWidget {
           SizedBox(height: 120),
           Icon(Icons.inbox_outlined, size: 52),
           SizedBox(height: 12),
-          Text('لا توجد بيانات لعرضها.', textAlign: TextAlign.center),
+          Text('لا توجد نتائج مطابقة.', textAlign: TextAlign.center),
         ],
       );
     }
@@ -130,12 +202,13 @@ class _EndpointCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.read<AppController>();
     final branding = app.bootstrap!.branding;
-    final source = <String, dynamic>{};
-    final formatted = row['formatted'];
-    final raw = row['raw'];
-    if (formatted is Map) source.addAll(Map<String, dynamic>.from(formatted));
-    if (raw is Map) source.addAll(Map<String, dynamic>.from(raw));
-    source.addAll(row);
+    final source = <String, dynamic>{
+      ...?row['formatted'] is Map
+          ? Map<String, dynamic>.from(row['formatted'])
+          : null,
+      ...?row['raw'] is Map ? Map<String, dynamic>.from(row['raw']) : null,
+      ...row,
+    };
     source.removeWhere((key, value) =>
         key == 'raw' ||
         key == 'formatted' ||
@@ -175,13 +248,19 @@ class _EndpointCard extends StatelessWidget {
                       flex: 2,
                       child: Text(
                         _humanize(entry.key),
-                        style: TextStyle(color: branding.muted, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: branding.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       flex: 3,
-                      child: Text('${entry.value}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      child: Text(
+                        '${entry.value}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),
