@@ -130,11 +130,12 @@ class _EndpointCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.read<AppController>();
     final branding = app.bootstrap!.branding;
-    final source = <String, dynamic>{
-      ...?row['formatted'] is Map ? Map<String, dynamic>.from(row['formatted']) : null,
-      ...?row['raw'] is Map ? Map<String, dynamic>.from(row['raw']) : null,
-      ...row,
-    };
+    final source = <String, dynamic>{};
+    final formatted = row['formatted'];
+    final raw = row['raw'];
+    if (formatted is Map) source.addAll(Map<String, dynamic>.from(formatted));
+    if (raw is Map) source.addAll(Map<String, dynamic>.from(raw));
+    source.addAll(row);
     source.removeWhere((key, value) =>
         key == 'raw' ||
         key == 'formatted' ||
