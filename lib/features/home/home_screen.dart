@@ -39,25 +39,32 @@ class HomeScreen extends StatelessWidget {
           onRefresh: app.refreshAll,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
               Row(
                 children: [
                   CircleAvatar(
-                    radius: 25,
+                    radius: 23,
                     backgroundColor: theme.secondary,
                     child: Icon(Icons.person_rounded, color: theme.primary),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           name.isEmpty ? theme.appName : name,
-                          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: theme.text),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: theme.text),
                         ),
-                        Text(title.isEmpty ? theme.appName : title, style: TextStyle(color: theme.muted)),
+                        Text(
+                          title.isEmpty ? theme.appName : title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: theme.muted, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -71,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
               TextField(
                 readOnly: true,
                 onTap: () => _open(context, const ReceiptsSearchScreen()),
@@ -81,16 +88,24 @@ class HomeScreen extends StatelessWidget {
                   suffixIcon: const Icon(Icons.arrow_back_rounded),
                 ),
               ),
-              const SizedBox(height: 26),
-              _Title('ملخصي', loading: app.refreshingDashboard),
-              const SizedBox(height: 12),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('ملخصي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.text)),
+                  ),
+                  if (app.refreshingDashboard)
+                    const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                ],
+              ),
+              const SizedBox(height: 10),
               GridView.count(
-                crossAxisCount: 2,
+                crossAxisCount: 4,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.18,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: .76,
                 children: [
                   _Metric(Icons.star_rounded, 'النجوم', _count(badges['stars']), theme.warning,
                       () => _open(context, const NotificationsScreen(scope: 'month'))),
@@ -98,44 +113,47 @@ class HomeScreen extends StatelessWidget {
                       () => _open(context, const NotificationsScreen(scope: 'month'))),
                   _Metric(Icons.schedule_rounded, 'بانتظار المدير', _count(badges['my_approvals']), theme.primary,
                       () => _open(context, const ApprovalsScreen(scope: 'mine'))),
-                  _Metric(Icons.fact_check_outlined, 'بانتظار موافقتي', _count(badges['manager_approvals']), theme.success,
+                  _Metric(Icons.fact_check_outlined, 'موافقتي', _count(badges['manager_approvals']), theme.success,
                       () => _open(context, const ApprovalsScreen(scope: 'awaiting'))),
                 ],
               ),
-              const SizedBox(height: 26),
-              const _Title('وظائف سريعة'),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: actions.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: .92,
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('وظائف سريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.text)),
+                const SizedBox(height: 10),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: actions.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 9,
+                    crossAxisSpacing: 9,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemBuilder: (context, index) {
+                    final action = actions[index];
+                    return _Quick(
+                      _actionIcon('${action['icon'] ?? ''}'),
+                      '${action['label'] ?? action['key'] ?? ''}',
+                      () => _runAction(context, action),
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) {
-                  final action = actions[index];
-                  return _Quick(
-                    _actionIcon('${action['icon'] ?? ''}'),
-                    '${action['label'] ?? action['key'] ?? ''}',
-                    () => _runAction(context, action),
-                  );
-                },
-              ),
-              const SizedBox(height: 14),
+              ],
+              const SizedBox(height: 12),
               Material(
                 color: theme.secondary,
                 borderRadius: BorderRadius.circular(theme.radius),
                 child: ListTile(
+                  dense: true,
                   onTap: () => _open(context, const ComposeNotificationScreen()),
                   leading: Icon(Icons.notifications_active_rounded, color: theme.primary),
                   title: Text(
                     '${(b.home['notifier_banner'] as Map?)?['label'] ?? 'إرسال إشعار'}',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  trailing: const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
+                  trailing: const Icon(Icons.arrow_back_ios_new_rounded, size: 15),
                 ),
               ),
             ],
@@ -153,13 +171,7 @@ class HomeScreen extends StatelessWidget {
         _message(context, 'لم يتم تعريف Form Key لهذا الإجراء.');
         return;
       }
-      _open(
-        context,
-        FormidableWebScreen(
-          formKey: formKey,
-          title: '${action['label'] ?? formKey}',
-        ),
-      );
+      _open(context, FormidableWebScreen(formKey: formKey, title: '${action['label'] ?? formKey}'));
       return;
     }
     if (type == 'camera') {
@@ -195,22 +207,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _Title extends StatelessWidget {
-  const _Title(this.text, {this.loading = false});
-  final String text;
-  final bool loading;
-  @override
-  Widget build(BuildContext context) {
-    final branding = context.read<AppController>().bootstrap!.branding;
-    return Row(
-      children: [
-        Expanded(child: Text(text, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: branding.text))),
-        if (loading) const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-      ],
-    );
-  }
-}
-
 class _Metric extends StatelessWidget {
   const _Metric(this.icon, this.label, this.value, this.color, this.onTap);
   final IconData icon;
@@ -218,33 +214,36 @@ class _Metric extends StatelessWidget {
   final int value;
   final Color color;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final branding = context.read<AppController>().bootstrap!.branding;
     return Material(
       color: branding.surface,
-      borderRadius: BorderRadius.circular(branding.radius),
+      borderRadius: BorderRadius.circular(15),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(branding.radius),
+        borderRadius: BorderRadius.circular(15),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
           decoration: BoxDecoration(
             border: Border.all(color: branding.border),
-            borderRadius: BorderRadius.circular(branding.radius),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(color: color.withValues(alpha: .11), borderRadius: BorderRadius.circular(13)),
-                child: Icon(icon, color: color),
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 5),
+              Text('$value', style: TextStyle(fontSize: 20, height: 1, fontWeight: FontWeight.w900, color: branding.text)),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: branding.muted, fontSize: 10.5, height: 1.1, fontWeight: FontWeight.w700),
               ),
-              const Spacer(),
-              Text('$value', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: branding.text)),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: branding.muted, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -258,6 +257,7 @@ class _Quick extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final branding = context.read<AppController>().bootstrap!.branding;
@@ -268,7 +268,7 @@ class _Quick extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(branding.radius),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             border: Border.all(color: branding.border),
             borderRadius: BorderRadius.circular(branding.radius),
@@ -276,9 +276,10 @@ class _Quick extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: branding.primary, size: 30),
-              const SizedBox(height: 10),
-              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
+              Icon(icon, color: branding.primary, size: 27),
+              const SizedBox(height: 8),
+              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
