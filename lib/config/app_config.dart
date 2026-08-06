@@ -27,4 +27,15 @@ class AppConfig {
     };
     return Uri.parse('$cleanBase/').replace(queryParameters: parameters);
   }
+
+  static Uri mobileFormUri(String formKey, String token) {
+    final cleanBase = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    return Uri.parse('$cleanBase/').replace(
+      queryParameters: {
+        'nzmb_mobile_form': formKey,
+        'app_id': appId,
+        'token': token,
+      },
+    );
+  }
 }
