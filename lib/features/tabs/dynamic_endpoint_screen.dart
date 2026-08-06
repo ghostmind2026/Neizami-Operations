@@ -33,7 +33,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
     super.dispose();
   }
 
-  void _onSearchChanged(String value) {
+  void _onSearchChanged(String _) {
     setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 320), _load);
@@ -57,33 +57,40 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _text(widget.tab['label']).isNotEmpty ? _text(widget.tab['label']) : _text(widget.tab['key']);
+    final fallbackTitle = _text(widget.tab['label']).isNotEmpty ? _text(widget.tab['label']) : _text(widget.tab['key']);
+    final presentation = _map(_payload?['presentation']);
+    final screen = _map(presentation['screen']);
+    final search = _map(presentation['search']);
+    final title = _text(screen['title']).isNotEmpty ? _text(screen['title']) : fallbackTitle;
+    final showSearch = search['enabled'] != false;
     final branding = context.read<AppController>().bootstrap!.branding;
+
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: Column(
         children: [
-          Container(
-            color: branding.background,
-            padding: const EdgeInsets.fromLTRB(14, 7, 14, 10),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _load(),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'بحث سريع في $title',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () { _searchController.clear(); _load(); },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
+          if (showSearch)
+            Container(
+              color: branding.background,
+              padding: const EdgeInsets.fromLTRB(14, 7, 14, 10),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _load(),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: _text(search['placeholder']).isNotEmpty ? _text(search['placeholder']) : 'بحث سريع في $title',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () { _searchController.clear(); _load(); },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
               ),
             ),
-          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -104,13 +111,141 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
                         )
                       : Stack(
                           children: [
-                            _EndpointBody(payload: _payload ?? const {}),
+                            _PresentationBody(presentation: presentation),
                             if (_loading) const Positioned(top: 0, left: 0, right: 0, child: LinearProgressIndicator(minHeight: 2)),
                           ],
                         ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PresentationBody extends StatelessWidget {
+  const _PresentationBody({required this.presentation});
+  final Map<String, dynamic> presentation;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = _listOfMaps(presentation['cards']);
+    final kpis = _listOfMaps(presentation['kpis']);
+    final groups = _listOfMaps(presentation['groups']);
+    final filters = _listOfMaps(presentation['filters']);
+
+    if (cards.isEmpty && kpis.isEmpty && groups.isEmpty && filters.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: const [SizedBox(height: 120), Icon(Icons.inbox_outlined, size: 52), SizedBox(height: 12), Text('لا توجد نتائج مطابقة.', textAlign: TextAlign.center)],
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 26),
+      children: [
+        if (filters.isNotEmpty) _HorizontalSection(items: filters, kind: _SectionKind.filter),
+        if (kpis.isNotEmpty) _HorizontalSection(items: kpis, kind: _SectionKind.kpi),
+        if (groups.isNotEmpty) _HorizontalSection(items: groups, kind: _SectionKind.group),
+        for (final card in cards) ...[
+          _PresentationCard(card: card),
+          const SizedBox(height: 9),
+        ],
+      ],
+    );
+  }
+}
+
+enum _SectionKind { filter, kpi, group }
+
+class _HorizontalSection extends StatelessWidget {
+  const _HorizontalSection({required this.items, required this.kind});
+  final List<Map<String, dynamic>> items;
+  final _SectionKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final branding = context.read<AppController>().bootstrap!.branding;
+    return SizedBox(
+      height: kind == _SectionKind.kpi ? 88 : 54,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(bottom: 10),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, index) {
+          final item = items[index];
+          final label = _firstUseful([item['label'], item['title'], item['name'], item['key']]);
+          final value = _firstUseful([item['value'], item['count'], item['total']]);
+          return Container(
+            constraints: const BoxConstraints(minWidth: 90),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+            decoration: BoxDecoration(
+              color: branding.surface,
+              border: Border.all(color: branding.border),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: kind == _SectionKind.kpi
+                ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(label, style: TextStyle(color: branding.muted, fontSize: 12, fontWeight: FontWeight.w700))])
+                : Center(child: Text(value.isEmpty ? label : '$label: $value', style: const TextStyle(fontWeight: FontWeight.w800))),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PresentationCard extends StatelessWidget {
+  const _PresentationCard({required this.card});
+  final Map<String, dynamic> card;
+
+  @override
+  Widget build(BuildContext context) {
+    final branding = context.read<AppController>().bootstrap!.branding;
+    final fields = _map(card['fields']);
+    final title = _text(card['title']);
+    final subtitle = _text(card['subtitle']);
+    final chips = <Map<String, dynamic>>[];
+    for (final key in const ['primary_value', 'secondary_value', 'badge', 'reference', 'date']) {
+      final field = _map(fields[key]);
+      final value = _text(field['value']);
+      if (value.isNotEmpty) chips.add(field);
+    }
+
+    return Material(
+      color: branding.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
+        decoration: BoxDecoration(border: Border.all(color: branding.border), borderRadius: BorderRadius.circular(18)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title.isNotEmpty)
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, height: 1.25, fontWeight: FontWeight.w900)),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: branding.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+            ],
+            if (chips.isNotEmpty) const SizedBox(height: 9),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: chips.map((field) {
+                final label = _text(field['label']);
+                final value = _text(field['value']);
+                final showLabel = field['show_label'] == true && label.isNotEmpty;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(color: branding.background, borderRadius: BorderRadius.circular(10)),
+                  child: Text(showLabel ? '$label: $value' : value, style: TextStyle(color: branding.text, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -134,140 +269,7 @@ class _LoadingList extends StatelessWidget {
       );
 }
 
-class _EndpointBody extends StatelessWidget {
-  const _EndpointBody({required this.payload});
-  final Map<String, dynamic> payload;
-
-  @override
-  Widget build(BuildContext context) {
-    final endpoint = payload['endpoint'];
-    final data = endpoint is Map ? Map<String, dynamic>.from(endpoint) : <String, dynamic>{};
-    final rows = _findRows(data);
-    if (rows.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: const [SizedBox(height: 120), Icon(Icons.inbox_outlined, size: 52), SizedBox(height: 12), Text('لا توجد نتائج مطابقة.', textAlign: TextAlign.center)],
-      );
-    }
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 26),
-      itemCount: rows.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 9),
-      itemBuilder: (_, index) => _EndpointCard(row: rows[index]),
-    );
-  }
-
-  static List<Map<String, dynamic>> _findRows(Map<String, dynamic> data) {
-    for (final key in const ['rows', 'items', 'data', 'results']) {
-      final value = data[key];
-      if (value is List) return value.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
-      if (value is Map) {
-        final nested = _findRows(Map<String, dynamic>.from(value));
-        if (nested.isNotEmpty) return nested;
-      }
-    }
-    return const [];
-  }
-}
-
-class _EndpointCard extends StatelessWidget {
-  const _EndpointCard({required this.row});
-  final Map<String, dynamic> row;
-
-  @override
-  Widget build(BuildContext context) {
-    final branding = context.read<AppController>().bootstrap!.branding;
-    final presentation = row['presentation'] is Map ? Map<String, dynamic>.from(row['presentation']) : <String, dynamic>{};
-    final formatted = row['formatted'] is Map ? Map<String, dynamic>.from(row['formatted']) : <String, dynamic>{};
-    final raw = row['raw'] is Map ? Map<String, dynamic>.from(row['raw']) : <String, dynamic>{};
-    final source = <String, dynamic>{...formatted, ...raw, ...row};
-
-    final title = _pickTitle(presentation, source);
-    final subtitle = _firstUseful([presentation['subtitle'], row['subtitle'], source['summary'], source['description']]);
-    final details = <MapEntry<String, dynamic>>[];
-
-    for (final entry in source.entries) {
-      final value = _text(entry.value);
-      if (value.isEmpty || value == title || value == subtitle) continue;
-      if (_technicalKey(entry.key) || entry.value is Map || entry.value is List) continue;
-      details.add(MapEntry(entry.key, entry.value));
-      if (details.length == 4) break;
-    }
-
-    return Material(
-      color: branding.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
-        decoration: BoxDecoration(border: Border.all(color: branding.border), borderRadius: BorderRadius.circular(18)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, height: 1.25, fontWeight: FontWeight.w900)),
-            if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: branding.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
-            ],
-            if (details.isNotEmpty) const SizedBox(height: 9),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: details.map((entry) {
-                final label = _label(entry.key);
-                final value = _text(entry.value);
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  decoration: BoxDecoration(color: branding.background, borderRadius: BorderRadius.circular(10)),
-                  child: Text(label.isEmpty ? value : '$label: $value', style: TextStyle(color: branding.text, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _pickTitle(Map<String, dynamic> presentation, Map<String, dynamic> source) {
-    final direct = _firstUseful([
-      presentation['title'], source['title'], source['name'], source['label'],
-      source['item_name_final'], source['item name final'], source['supplier_name'],
-      source['customer_name'], source['device_name'], source['employee_name'],
-    ]);
-    if (direct.isNotEmpty) return direct;
-    for (final entry in source.entries) {
-      if (_technicalKey(entry.key) || entry.value is Map || entry.value is List) continue;
-      final value = _text(entry.value);
-      if (value.isNotEmpty) return value;
-    }
-    return 'بدون عنوان';
-  }
-
-  static String _firstUseful(List<dynamic> values) {
-    for (final value in values) {
-      final text = _text(value);
-      if (text.isNotEmpty) return text;
-    }
-    return '';
-  }
-
-  static bool _technicalKey(String key) {
-    final clean = key.toLowerCase().trim();
-    return const {'raw','formatted','presentation','entry_id','id','key','field_key','meta'}.contains(clean) || clean.contains('entry id') || clean.contains('field key');
-  }
-
-  static String _label(String key) {
-    final clean = key.replaceAll(RegExp(r'^tpl_col_'), '').replaceAll('_', ' ').trim();
-    if (RegExp(r'^[a-z0-9]{5,10}$', caseSensitive: false).hasMatch(clean) && RegExp(r'\d').hasMatch(clean)) return '';
-    return clean;
-  }
-}
-
-String _text(dynamic value) {
-  if (value == null) return '';
-  final text = '$value'.trim();
-  if (text.isEmpty || text.toLowerCase() == 'null' || text.toLowerCase() == 'undefined') return '';
-  return text;
-}
+Map<String, dynamic> _map(dynamic value) => value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+List<Map<String, dynamic>> _listOfMaps(dynamic value) => value is List ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : const [];
+String _firstUseful(List<dynamic> values) { for (final value in values) { final text = _text(value); if (text.isNotEmpty) return text; } return ''; }
+String _text(dynamic value) { if (value == null) return ''; final text = '$value'.trim(); if (text.isEmpty || text.toLowerCase() == 'null' || text.toLowerCase() == 'undefined') return ''; return text; }
