@@ -9,6 +9,7 @@ import 'core/storage/session_store.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell/app_shell.dart';
+import 'features/splash/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,11 +44,14 @@ class NeizamiApp extends StatelessWidget {
       ],
       home: Directionality(
         textDirection: branding.rtl ? TextDirection.rtl : TextDirection.ltr,
-        child: app.loading
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-            : app.authenticated
-                ? const AppShell()
-                : const LoginScreen(),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          child: app.loading
+              ? const SplashScreen(key: ValueKey('splash'))
+              : app.authenticated
+                  ? const AppShell(key: ValueKey('shell'))
+                  : const LoginScreen(key: ValueKey('login')),
+        ),
       ),
     );
   }
