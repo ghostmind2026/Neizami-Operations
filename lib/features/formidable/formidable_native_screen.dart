@@ -129,7 +129,11 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => FormidableWebScreen(formKey: widget.formKey, title: widget.title),
+        builder: (_) => FormidableWebScreen(
+          formKey: widget.formKey,
+          title: widget.title,
+          forceWeb: true,
+        ),
       ),
     );
   }
