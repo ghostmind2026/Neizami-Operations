@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
@@ -81,7 +83,10 @@ class AppController extends ChangeNotifier {
   Future<void> loadBootstrap() async {
     bootstrap = BootstrapData.fromJson(await api.get('/bootstrap'));
     notifyListeners();
-    await refreshDashboard();
+
+    // Home can render immediately. Dashboard counters refresh in parallel
+    // instead of keeping login/splash blocked behind extra endpoints.
+    unawaited(refreshDashboard());
   }
 
   Future<void> refreshDashboard() async {
@@ -92,6 +97,19 @@ class AppController extends ChangeNotifier {
 
     final next = <String, dynamic>{};
 
+    await Future.wait([
+      _loadNotificationBadges(next),
+      _loadApprovalBadges(next),
+    ]);
+
+    if (bootstrap != null) {
+      liveBadges = next;
+    }
+    refreshingDashboard = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadNotificationBadges(Map<String, dynamic> next) async {
     try {
       final notifications = await api.get(
         '/notifications',
@@ -108,7 +126,9 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       // Keep Bootstrap counters when Notifier is temporarily unavailable.
     }
+  }
 
+  Future<void> _loadApprovalBadges(Map<String, dynamic> next) async {
     try {
       final approvals = await api.get(
         '/approvals',
@@ -123,10 +143,6 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       // Keep Bootstrap counters when Approvals is temporarily unavailable.
     }
-
-    liveBadges = next;
-    refreshingDashboard = false;
-    notifyListeners();
   }
 
   Future<void> refreshAll() async {
@@ -143,6 +159,7 @@ class AppController extends ChangeNotifier {
     await sessions.clear();
     bootstrap = null;
     liveBadges = <String, dynamic>{};
+    refreshingDashboard = false;
     notifyListeners();
   }
 
