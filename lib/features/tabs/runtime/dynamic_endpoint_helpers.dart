@@ -35,14 +35,78 @@ Map<String, dynamic> _mergePayload(
     if (seen.add(signature)) mergedCards.add(card);
   }
 
+  final mergedGroups = _mergeGroupTrees(
+    _listOfMaps(oldPresentation['groups']),
+    _listOfMaps(newPresentation['groups']),
+  );
+
   return <String, dynamic>{
     'tab': incoming['tab'] ?? current['tab'],
     'presentation': <String, dynamic>{
       ...oldPresentation,
       ...newPresentation,
       'cards': mergedCards,
+      if (mergedGroups.isNotEmpty) 'groups': mergedGroups,
     },
   };
+}
+
+List<Map<String, dynamic>> _mergeGroupTrees(
+  List<Map<String, dynamic>> oldGroups,
+  List<Map<String, dynamic>> newGroups,
+) {
+  if (oldGroups.isEmpty) return newGroups;
+  if (newGroups.isEmpty) return oldGroups;
+
+  final merged = oldGroups.map((g) => Map<String, dynamic>.from(g)).toList();
+  for (final incoming in newGroups) {
+    final signature = _groupSignature(incoming);
+    final index = merged.indexWhere((item) => _groupSignature(item) == signature);
+    if (index < 0) {
+      merged.add(Map<String, dynamic>.from(incoming));
+      continue;
+    }
+
+    final previous = merged[index];
+    final ids = <String>{
+      ..._groupEntryIds(previous),
+      ..._groupEntryIds(incoming),
+    };
+    final children = _mergeGroupTrees(
+      _listOfMaps(previous['children']),
+      _listOfMaps(incoming['children']),
+    );
+    merged[index] = <String, dynamic>{
+      ...previous,
+      ...incoming,
+      if (ids.isNotEmpty) 'entry_ids': ids.toList(),
+      if (children.isNotEmpty) 'children': children,
+    };
+  }
+  return merged;
+}
+
+String _groupSignature(Map<String, dynamic> group) {
+  return _firstUseful([
+    group['key'],
+    group['id'],
+    group['value'],
+    group['label'],
+    group['title'],
+  ]);
+}
+
+Set<String> _groupEntryIds(Map<String, dynamic> group) {
+  final out = <String>{};
+  for (final value in (group['entry_ids'] as List? ?? const [])) {
+    final id = _text(value);
+    if (id.isNotEmpty) out.add(id);
+  }
+  for (final row in _listOfMaps(group['rows'])) {
+    final id = _firstUseful([row['entry_id'], row['id']]);
+    if (id.isNotEmpty) out.add(id);
+  }
+  return out;
 }
 
 int _pageFrom(Map<String, dynamic> data, int fallback) {
