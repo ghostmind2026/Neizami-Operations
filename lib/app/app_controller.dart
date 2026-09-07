@@ -117,12 +117,7 @@ class AppController extends ChangeNotifier {
       );
       final payload = _payloadOf(notifications);
       final counts = _mapOf(payload['counts']);
-      next.addAll({
-        'notifications': _intOf(counts['unread']),
-        'stars': _intOf(counts['positive']),
-        'warning_cards': _intOf(counts['warning']),
-        'red_cards': _intOf(counts['red']),
-      });
+      next.addAll(_notificationBadgeValues(counts));
     } catch (_) {
       // Keep Bootstrap counters when Notifier is temporarily unavailable.
     }
@@ -143,6 +138,27 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       // Keep Bootstrap counters when Approvals is temporarily unavailable.
     }
+  }
+
+  void applyNotificationCounts(dynamic rawCounts) {
+    final counts = _mapOf(rawCounts);
+    if (counts.isEmpty) return;
+    liveBadges = <String, dynamic>{
+      ...liveBadges,
+      ..._notificationBadgeValues(counts),
+    };
+    notifyListeners();
+  }
+
+  Map<String, dynamic> _notificationBadgeValues(
+    Map<String, dynamic> counts,
+  ) {
+    return <String, dynamic>{
+      'notifications': _intOf(counts['unread']),
+      'stars': _intOf(counts['positive']),
+      'warning_cards': _intOf(counts['warning']),
+      'red_cards': _intOf(counts['red']),
+    };
   }
 
   Future<void> refreshAll() async {
