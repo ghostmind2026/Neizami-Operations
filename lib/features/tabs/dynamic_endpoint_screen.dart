@@ -14,9 +14,15 @@ class DynamicEndpointScreen extends StatefulWidget {
 }
 
 class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
+  static const int _pageSize = 40;
+
   final _searchController = TextEditingController();
   Timer? _debounce;
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _page = 1;
+  int _requestSerial = 0;
   String? _error;
   Map<String, dynamic>? _payload;
 
@@ -36,32 +42,82 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
   void _onSearchChanged(String _) {
     setState(() {});
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 320), _load);
+    _debounce = Timer(
+      const Duration(milliseconds: 320),
+      () => _load(reset: true),
+    );
   }
 
-  Future<void> _load() async {
-    if (mounted) setState(() { _loading = true; _error = null; });
+  Future<void> _load({bool reset = true}) async {
+    final requestId = ++_requestSerial;
+    final targetPage = reset ? 1 : _page + 1;
+
+    if (mounted) {
+      setState(() {
+        if (reset) {
+          _loading = true;
+          _error = null;
+        } else {
+          _loadingMore = true;
+        }
+      });
+    }
+
     try {
-      final query = _searchController.text.trim();
+      final text = _searchController.text.trim();
+      final query = <String, dynamic>{
+        'page': targetPage,
+        'limit': _pageSize,
+        if (text.isNotEmpty) 'q': text,
+        if (text.isNotEmpty) 'search': text,
+      };
+
       final data = await context.read<AppController>().api.get(
         '/tabs/${widget.tab['key']}',
-        query: query.isEmpty ? null : {'q': query, 'search': query, 'page': 1, 'limit': 40},
+        query: query,
       );
-      if (mounted) setState(() => _payload = data);
+
+      if (!mounted || requestId != _requestSerial) return;
+
+      setState(() {
+        _payload = reset ? data : _mergePayload(_payload, data);
+        _page = _pageFrom(data, targetPage);
+        _hasMore = _hasMoreFrom(
+          data,
+          page: _page,
+          pageSize: _pageSize,
+        );
+      });
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (!mounted || requestId != _requestSerial) return;
+      if (reset) {
+        setState(() => _error = '$error');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تحميل المزيد: $error')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && requestId == _requestSerial) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final fallbackTitle = _text(widget.tab['label']).isNotEmpty ? _text(widget.tab['label']) : _text(widget.tab['key']);
+    final fallbackTitle = _text(widget.tab['label']).isNotEmpty
+        ? _text(widget.tab['label'])
+        : _text(widget.tab['key']);
     final presentation = _map(_payload?['presentation']);
     final screen = _map(presentation['screen']);
     final search = _map(presentation['search']);
-    final title = _text(screen['title']).isNotEmpty ? _text(screen['title']) : fallbackTitle;
+    final title = _text(screen['title']).isNotEmpty
+        ? _text(screen['title'])
+        : fallbackTitle;
     final showSearch = search['enabled'] != false;
     final branding = context.read<AppController>().bootstrap!.branding;
 
@@ -77,15 +133,20 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
                 controller: _searchController,
                 onChanged: _onSearchChanged,
                 textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _load(),
+                onSubmitted: (_) => _load(reset: true),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: _text(search['placeholder']).isNotEmpty ? _text(search['placeholder']) : 'بحث سريع في $title',
+                  hintText: _text(search['placeholder']).isNotEmpty
+                      ? _text(search['placeholder'])
+                      : 'بحث سريع في $title',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
-                          onPressed: () { _searchController.clear(); _load(); },
+                          onPressed: () {
+                            _searchController.clear();
+                            _load(reset: true);
+                          },
                           icon: const Icon(Icons.close_rounded),
                         ),
                 ),
@@ -93,7 +154,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
             ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: () => _load(reset: true),
               child: _loading && _payload == null
                   ? const _LoadingList()
                   : _error != null
@@ -102,17 +163,35 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
                           padding: const EdgeInsets.all(24),
                           children: [
                             const SizedBox(height: 80),
-                            Icon(Icons.error_outline_rounded, size: 46, color: branding.muted),
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 46,
+                              color: branding.muted,
+                            ),
                             const SizedBox(height: 12),
                             Text(_error!, textAlign: TextAlign.center),
                             const SizedBox(height: 16),
-                            FilledButton(onPressed: _load, child: const Text('إعادة المحاولة')),
+                            FilledButton(
+                              onPressed: () => _load(reset: true),
+                              child: const Text('إعادة المحاولة'),
+                            ),
                           ],
                         )
                       : Stack(
                           children: [
-                            _PresentationBody(presentation: presentation),
-                            if (_loading) const Positioned(top: 0, left: 0, right: 0, child: LinearProgressIndicator(minHeight: 2)),
+                            _PresentationBody(
+                              presentation: presentation,
+                              hasMore: _hasMore,
+                              loadingMore: _loadingMore,
+                              onLoadMore: () => _load(reset: false),
+                            ),
+                            if (_loading)
+                              const Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: LinearProgressIndicator(minHeight: 2),
+                              ),
                           ],
                         ),
             ),
@@ -124,8 +203,17 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
 }
 
 class _PresentationBody extends StatelessWidget {
-  const _PresentationBody({required this.presentation});
+  const _PresentationBody({
+    required this.presentation,
+    required this.hasMore,
+    required this.loadingMore,
+    required this.onLoadMore,
+  });
+
   final Map<String, dynamic> presentation;
+  final bool hasMore;
+  final bool loadingMore;
+  final VoidCallback onLoadMore;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +250,19 @@ class _PresentationBody extends StatelessWidget {
             _PresentationCard(card: card),
             const SizedBox(height: 9),
           ],
+        if (hasMore) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: loadingMore ? null : onLoadMore,
+            icon: loadingMore
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.expand_more_rounded),
+            label: Text(loadingMore ? 'جاري التحميل...' : 'تحميل المزيد'),
+          ),
+        ],
       ],
     );
   }
@@ -194,7 +295,9 @@ class _GroupBrowserState extends State<_GroupBrowser> {
       depth++;
     }
 
-    final selected = selectedPath.isEmpty ? <String, dynamic>{} : selectedPath.last;
+    final selected = selectedPath.isEmpty
+        ? <String, dynamic>{}
+        : selectedPath.last;
     final visibleCards = _cardsForGroup(selected, widget.cards);
     final groupKpis = _cleanVisualItems(_listOfMaps(selected['kpis']));
 
@@ -229,7 +332,8 @@ class _GroupBrowserState extends State<_GroupBrowser> {
       if (layer.isEmpty) return const SizedBox.shrink();
     }
     final selectedIndex = _selected.length > level ? _selected[level] : 0;
-    final sourceLabel = layer.isEmpty ? '' : _text(layer.first['source_label']);
+    final sourceLabel =
+        layer.isEmpty ? '' : _text(layer.first['source_label']);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -263,7 +367,9 @@ class _GroupBrowserState extends State<_GroupBrowser> {
                   label: Text(count.isEmpty ? label : '$label  $count'),
                   onSelected: (_) {
                     setState(() {
-                      while (_selected.length <= level) _selected.add(0);
+                      while (_selected.length <= level) {
+                        _selected.add(0);
+                      }
                       _selected[level] = index;
                       if (_selected.length > level + 1) {
                         _selected.removeRange(level + 1, _selected.length);
@@ -316,8 +422,17 @@ class _HorizontalSection extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
           final item = items[index];
-          final label = _firstUseful([item['label'], item['title'], item['name'], item['key']]);
-          final value = _firstUseful([item['value'], item['count'], item['total']]);
+          final label = _firstUseful([
+            item['label'],
+            item['title'],
+            item['name'],
+            item['key'],
+          ]);
+          final value = _firstUseful([
+            item['value'],
+            item['count'],
+            item['total'],
+          ]);
           return Container(
             constraints: const BoxConstraints(minWidth: 90),
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
@@ -327,8 +442,33 @@ class _HorizontalSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             child: kind == _SectionKind.kpi
-                ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(label, style: TextStyle(color: branding.muted, fontSize: 12, fontWeight: FontWeight.w700))])
-                : Center(child: Text(value.isEmpty ? label : '$label: $value', style: const TextStyle(fontWeight: FontWeight.w800))),
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: branding.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(
+                    child: Text(
+                      value.isEmpty ? label : '$label: $value',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
           );
         },
       ),
@@ -347,7 +487,13 @@ class _PresentationCard extends StatelessWidget {
     final title = _text(card['title']);
     final subtitle = _text(card['subtitle']);
     final chips = <Map<String, dynamic>>[];
-    for (final key in const ['primary_value', 'secondary_value', 'badge', 'reference', 'date']) {
+    for (final key in const [
+      'primary_value',
+      'secondary_value',
+      'badge',
+      'reference',
+      'date',
+    ]) {
       final field = _map(fields[key]);
       final value = _text(field['value']);
       if (value.isNotEmpty) chips.add(field);
@@ -358,15 +504,36 @@ class _PresentationCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
-        decoration: BoxDecoration(border: Border.all(color: branding.border), borderRadius: BorderRadius.circular(18)),
+        decoration: BoxDecoration(
+          border: Border.all(color: branding.border),
+          borderRadius: BorderRadius.circular(18),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (title.isNotEmpty)
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, height: 1.25, fontWeight: FontWeight.w900)),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.25,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             if (subtitle.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: branding.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: branding.muted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
             if (chips.isNotEmpty) const SizedBox(height: 9),
             Wrap(
@@ -375,11 +542,23 @@ class _PresentationCard extends StatelessWidget {
               children: chips.map((field) {
                 final label = _text(field['label']);
                 final value = _text(field['value']);
-                final showLabel = field['show_label'] == true && label.isNotEmpty;
+                final showLabel =
+                    field['show_label'] == true && label.isNotEmpty;
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  decoration: BoxDecoration(color: branding.background, borderRadius: BorderRadius.circular(10)),
-                  child: Text(showLabel ? '$label: $value' : value, style: TextStyle(color: branding.text, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: branding.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    showLabel ? '$label: $value' : value,
+                    style: TextStyle(
+                      color: branding.text,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 );
               }).toList(),
             ),
@@ -392,6 +571,7 @@ class _PresentationCard extends StatelessWidget {
 
 class _LoadingList extends StatelessWidget {
   const _LoadingList();
+
   @override
   Widget build(BuildContext context) => ListView.separated(
         padding: const EdgeInsets.all(14),
@@ -402,21 +582,140 @@ class _LoadingList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: .5)),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: .5),
+            ),
           ),
         ),
       );
 }
 
-Map<String, dynamic> _map(dynamic value) => value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
-List<Map<String, dynamic>> _listOfMaps(dynamic value) => value is List ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : const [];
-String _firstUseful(List<dynamic> values) { for (final value in values) { final text = _text(value); if (text.isNotEmpty) return text; } return ''; }
-List<Map<String, dynamic>> _cleanVisualItems(List<Map<String, dynamic>> items) {
+Map<String, dynamic> _mergePayload(
+  Map<String, dynamic>? current,
+  Map<String, dynamic> next,
+) {
+  if (current == null || current.isEmpty) return next;
+
+  final currentPresentation = _map(current['presentation']);
+  final nextPresentation = _map(next['presentation']);
+  if (currentPresentation.isEmpty || nextPresentation.isEmpty) {
+    return <String, dynamic>{...current, ...next};
+  }
+
+  final oldCards = _listOfMaps(currentPresentation['cards']);
+  final newCards = _listOfMaps(nextPresentation['cards']);
+  final cards = <Map<String, dynamic>>[];
+  final seen = <String>{};
+
+  for (final card in [...oldCards, ...newCards]) {
+    final key = _text(card['entry_id']).isNotEmpty
+        ? 'entry:${_text(card['entry_id'])}'
+        : _text(card['id']).isNotEmpty
+            ? 'id:${_text(card['id'])}'
+            : '';
+    if (key.isNotEmpty && !seen.add(key)) continue;
+    cards.add(card);
+  }
+
+  return <String, dynamic>{
+    ...current,
+    ...next,
+    'presentation': <String, dynamic>{
+      ...currentPresentation,
+      ...nextPresentation,
+      'cards': cards,
+    },
+  };
+}
+
+Map<String, dynamic> _paginationOf(Map<String, dynamic> data) {
+  final direct = _map(data['pagination']);
+  if (direct.isNotEmpty) return direct;
+
+  final meta = _map(data['meta']);
+  final fromMeta = _map(meta['pagination']);
+  if (fromMeta.isNotEmpty) return fromMeta;
+
+  final presentation = _map(data['presentation']);
+  return _map(presentation['pagination']);
+}
+
+int _pageFrom(Map<String, dynamic> data, int fallback) {
+  final pagination = _paginationOf(data);
+  return int.tryParse(
+        '${pagination['page'] ?? pagination['current_page'] ?? ''}',
+      ) ??
+      fallback;
+}
+
+bool _hasMoreFrom(
+  Map<String, dynamic> data, {
+  required int page,
+  required int pageSize,
+}) {
+  final pagination = _paginationOf(data);
+  final explicit = pagination['has_more'];
+  if (explicit is bool) return explicit;
+  if ('$explicit' == '1') return true;
+  if ('$explicit' == '0') return false;
+
+  final nextPage = int.tryParse('${pagination['next_page'] ?? ''}');
+  if (nextPage != null) return nextPage > page;
+
+  final totalPages = int.tryParse(
+    '${pagination['total_pages'] ?? pagination['pages'] ?? ''}',
+  );
+  if (totalPages != null) return page < totalPages;
+
+  final cards = _listOfMaps(_map(data['presentation'])['cards']);
+  return cards.length >= pageSize;
+}
+
+Map<String, dynamic> _map(dynamic value) => value is Map
+    ? Map<String, dynamic>.from(value)
+    : <String, dynamic>{};
+
+List<Map<String, dynamic>> _listOfMaps(dynamic value) => value is List
+    ? value
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList()
+    : const [];
+
+String _firstUseful(List<dynamic> values) {
+  for (final value in values) {
+    final text = _text(value);
+    if (text.isNotEmpty) return text;
+  }
+  return '';
+}
+
+List<Map<String, dynamic>> _cleanVisualItems(
+  List<Map<String, dynamic>> items,
+) {
   return items.where((item) {
     if (item.containsKey('ok') || item.containsKey('status')) return false;
-    final label = _firstUseful([item['label'], item['title'], item['name']]);
-    final value = _firstUseful([item['value'], item['count'], item['total']]);
+    final label = _firstUseful([
+      item['label'],
+      item['title'],
+      item['name'],
+    ]);
+    final value = _firstUseful([
+      item['value'],
+      item['count'],
+      item['total'],
+    ]);
     return label.isNotEmpty || value.isNotEmpty;
   }).toList();
 }
-String _text(dynamic value) { if (value == null) return ''; final text = '$value'.trim(); if (text.isEmpty || text.toLowerCase() == 'null' || text.toLowerCase() == 'undefined') return ''; return text; }
+
+String _text(dynamic value) {
+  if (value == null) return '';
+  final text = '$value'.trim();
+  if (text.isEmpty ||
+      text.toLowerCase() == 'null' ||
+      text.toLowerCase() == 'undefined') {
+    return '';
+  }
+  return text;
+}
