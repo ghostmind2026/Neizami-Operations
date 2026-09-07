@@ -84,6 +84,8 @@ class _PresentationCard extends StatelessWidget {
               child: Image.network(
                 image,
                 fit: BoxFit.cover,
+                cacheWidth: 480,
+                filterQuality: FilterQuality.low,
                 errorBuilder: (_, __, ___) => Container(
                   color: context.nz.surfaceSoft,
                   child: Icon(Icons.image_not_supported_outlined, color: context.nz.muted),
@@ -256,6 +258,9 @@ class _CardImage extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: 240,
+        cacheHeight: 240,
+        filterQuality: FilterQuality.low,
         errorBuilder: (_, __, ___) => Container(
           width: size,
           height: size,
