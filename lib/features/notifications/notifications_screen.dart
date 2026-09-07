@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,11 +18,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _items = const [];
+  late final AppController _app;
 
   @override
   void initState() {
     super.initState();
+    _app = context.read<AppController>();
     _load();
+  }
+
+  @override
+  void dispose() {
+    // If the server marks notifications as read while this screen is viewed,
+    // refresh badges after leaving without blocking navigation.
+    unawaited(_app.refreshDashboard());
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -29,8 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _error = null;
     });
     try {
-      final app = context.read<AppController>();
-      final response = await app.api.get(
+      final response = await _app.api.get(
         '/notifications',
         query: {'scope': widget.scope},
       );
@@ -38,7 +49,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ? _map(response['payload'])
           : response;
       final raw = payload['notifications'] as List? ?? const [];
-      _items = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      _items = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      _app.applyNotificationCounts(payload['counts']);
     } catch (e) {
       _error = '$e';
     } finally {
@@ -57,7 +72,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
+            ? ListView(
+                children: const [
+                  SizedBox(height: 260),
+                  Center(child: CircularProgressIndicator()),
+                ],
+              )
             : _error != null
                 ? ListView(
                     padding: const EdgeInsets.all(20),
@@ -65,7 +85,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const SizedBox(height: 120),
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 12),
-                      FilledButton(onPressed: _load, child: const Text('إعادة المحاولة')),
+                      FilledButton(
+                        onPressed: _load,
+                        child: const Text('إعادة المحاولة'),
+                      ),
                     ],
                   )
                 : _items.isEmpty
@@ -74,14 +97,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           SizedBox(height: 170),
                           Icon(Icons.notifications_off_outlined, size: 54),
                           SizedBox(height: 12),
-                          Center(child: Text('لا توجد إشعارات ضمن هذه الفترة.')),
+                          Center(
+                            child: Text('لا توجد إشعارات ضمن هذه الفترة.'),
+                          ),
                         ],
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _items.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (_, index) => _NotificationCard(item: _items[index]),
+                        itemBuilder: (_, index) =>
+                            _NotificationCard(item: _items[index]),
                       ),
       ),
     );
@@ -111,7 +137,8 @@ class _NotificationCard extends StatelessWidget {
                 ? branding.warning
                 : branding.primary;
     final title = '${item['title'] ?? item['subject'] ?? 'إشعار'}';
-    final message = '${item['message'] ?? item['body'] ?? item['content'] ?? ''}';
+    final message =
+        '${item['message'] ?? item['body'] ?? item['content'] ?? ''}';
     final date = '${item['created_at'] ?? item['date'] ?? ''}';
 
     return Container(
@@ -138,14 +165,24 @@ class _NotificationCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
                 if (message.trim().isNotEmpty) ...[
                   const SizedBox(height: 5),
-                  Text(message, maxLines: 3, overflow: TextOverflow.ellipsis),
+                  Text(
+                    message,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
                 if (date.trim().isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(date, style: TextStyle(color: branding.muted, fontSize: 12)),
+                  Text(
+                    date,
+                    style: TextStyle(color: branding.muted, fontSize: 12),
+                  ),
                 ],
               ],
             ),
