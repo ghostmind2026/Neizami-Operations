@@ -33,20 +33,24 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient(this.sessions);
+  ApiClient(this.sessions, {http.Client? client})
+      : _client = client ?? http.Client();
 
   final SessionStore sessions;
+  final http.Client _client;
 
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
-  }) => _send('GET', path, query: query);
+  }) =>
+      _send('GET', path, query: query);
 
   Future<Map<String, dynamic>> post(
     String path, {
     Object? body,
     Map<String, dynamic>? query,
-  }) => _send('POST', path, body: body, query: query);
+  }) =>
+      _send('POST', path, body: body, query: query);
 
   Future<Map<String, dynamic>> _send(
     String method,
@@ -126,7 +130,8 @@ class ApiClient {
 
     if (response.statusCode >= 400 || envelope['success'] == false) {
       final error = envelope['error'];
-      final serverCode = '${envelope['code'] ?? (error is Map ? error['code'] : '')}';
+      final serverCode =
+          '${envelope['code'] ?? (error is Map ? error['code'] : '')}';
       final message = error is Map
           ? '${error['message'] ?? envelope['message'] ?? 'تعذر تنفيذ الطلب.'}'
           : '${envelope['message'] ?? 'تعذر تنفيذ الطلب.'}';
@@ -173,7 +178,7 @@ class ApiClient {
 
       if (encodedBody != null) request.body = encodedBody;
 
-      final streamed = await request.send().timeout(
+      final streamed = await _client.send(request).timeout(
             method == 'GET'
                 ? const Duration(seconds: 30)
                 : const Duration(seconds: 45),
@@ -202,6 +207,8 @@ class ApiClient {
         statusCode == 307 ||
         statusCode == 308;
   }
+
+  void close() => _client.close();
 }
 
 class _HttpResult {
