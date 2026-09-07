@@ -35,8 +35,7 @@ class _AppShellState extends State<AppShell> {
 
     if (_index >= safeTabs.length) _index = 0;
 
-    final current = safeTabs[_index];
-    _ensureLoaded(current);
+    _ensureLoaded(safeTabs[_index], _index);
 
     return Scaffold(
       body: IndexedStack(
@@ -50,7 +49,7 @@ class _AppShellState extends State<AppShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) {
           if (value == _index) return;
-          _ensureLoaded(safeTabs[value]);
+          _ensureLoaded(safeTabs[value], value);
           setState(() => _index = value);
         },
         destinations: [
@@ -80,8 +79,8 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _ensureLoaded(Map<String, dynamic> tab) {
-    final key = _tabKey(tab, _index);
+  void _ensureLoaded(Map<String, dynamic> tab, int index) {
+    final key = _tabKey(tab, index);
     _loadedScreens.putIfAbsent(key, () => _screenFor(tab));
   }
 
