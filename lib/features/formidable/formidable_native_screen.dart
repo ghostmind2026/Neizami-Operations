@@ -361,7 +361,6 @@ class _NativeField extends StatelessWidget {
     final label = _text(field['label']);
     final description = _text(field['description']);
     final required = field['required'] == true;
-    final readonly = field['readonly'] == true;
     final options = _list(field['options']);
 
     return Column(
@@ -405,6 +404,8 @@ class _NativeField extends StatelessWidget {
     String type,
     List<Map<String, dynamic>> options,
   ) {
+    final readonly = field['readonly'] == true;
+
     if (type == 'select') {
       final current = _text(value);
       return DropdownButtonFormField<String>(
