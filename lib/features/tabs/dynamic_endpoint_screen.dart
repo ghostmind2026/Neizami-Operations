@@ -160,9 +160,23 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
   }
 
   Map<String, dynamic> _compactPayload(Map<String, dynamic> data) {
+    final rawPresentation = _map(data['presentation']);
+    final presentation = _compactPresentation(rawPresentation);
+
+    // Bridge/Smart Grid responses can expose the rendered rows outside
+    // presentation. Preserve them instead of returning empty card shells.
+    if (_listOfMaps(presentation['cards']).isEmpty) {
+      final fallbackCards = _listOfMaps(
+        data['cards'] ?? data['items'] ?? data['rows'] ?? data['results'],
+      );
+      if (fallbackCards.isNotEmpty) {
+        presentation['cards'] = fallbackCards;
+      }
+    }
+
     return <String, dynamic>{
       if (data['tab'] != null) 'tab': data['tab'],
-      if (data['presentation'] != null) 'presentation': data['presentation'],
+      'presentation': presentation,
     };
   }
 
