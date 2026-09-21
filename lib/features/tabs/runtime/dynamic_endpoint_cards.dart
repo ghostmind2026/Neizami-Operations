@@ -23,8 +23,33 @@ class _PresentationCard extends StatelessWidget {
     final reference = _field(fields, 'reference');
     final date = _field(fields, 'date');
 
-    return NzSurface(
+    final primaryText = _fieldValue(primary);
+    final numeric = double.tryParse(primaryText.replaceAll(',', ''));
+    final accent = numeric != null && numeric <= 0
+        ? context.nz.danger
+        : numeric != null && numeric <= 5
+            ? context.nz.warning
+            : context.nz.primary;
+
+    return Container(
       padding: EdgeInsets.all(compact ? 10 : (grid ? 12 : 13)),
+      decoration: BoxDecoration(
+        color: context.nz.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          top: BorderSide(color: context.nz.border),
+          bottom: BorderSide(color: context.nz.border),
+          left: BorderSide(color: accent, width: 2.5),
+          right: BorderSide(color: context.nz.border),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: .055),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: grid
           ? _gridContent(
               context,
