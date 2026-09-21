@@ -15,7 +15,6 @@ class ComposeNotificationScreen extends StatefulWidget {
 
 class _ComposeNotificationScreenState extends State<ComposeNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _title = TextEditingController();
   final _message = TextEditingController();
 
   bool _loading = true;
@@ -38,7 +37,6 @@ class _ComposeNotificationScreenState extends State<ComposeNotificationScreen> {
 
   @override
   void dispose() {
-    _title.dispose();
     _message.dispose();
     super.dispose();
   }
@@ -77,9 +75,9 @@ class _ComposeNotificationScreenState extends State<ComposeNotificationScreen> {
 
     try {
       await _app.api.post('/notifications', body: {
-        'recipient_type': _recipientType,
-        'recipient': _recipient,
-        'title': _title.text.trim(),
+        'target_type': _recipientType,
+        'target_value': _recipientType == 'all' ? <String>[] : <String>[_recipient!],
+        'title': 'إشعار',
         'message': _message.text.trim(),
         'with_warning': _warning,
         'with_positive': _positive,
@@ -180,15 +178,6 @@ class _ComposeNotificationScreenState extends State<ComposeNotificationScreen> {
                           onChanged: (value) =>
                               setState(() => _recipient = value),
                         ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _title,
-                        decoration: const InputDecoration(labelText: 'العنوان'),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'العنوان مطلوب.'
-                                : null,
-                      ),
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: _message,
