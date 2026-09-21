@@ -141,9 +141,9 @@ class _KpiStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 104,
+      height: 96,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+        padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -158,13 +158,14 @@ class _KpiStrip extends StatelessWidget {
             onTap: filterKey.isEmpty ? null : () => onFilter(filterKey, filterValue),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              width: 132,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              width: 124,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: active ? context.nz.primarySoft : context.nz.surface,
-                borderRadius: BorderRadius.circular(context.nz.radius),
+                color: active ? context.nz.primarySoft : Color.alphaBlend(context.nz.primary.withValues(alpha: .035), context.nz.surface),
+                borderRadius: BorderRadius.circular(11),
                 border: Border.all(
-                  color: active ? context.nz.primary : context.nz.border,
+                  color: active ? context.nz.primary : context.nz.primary.withValues(alpha: .28),
+                  width: active ? 1.6 : 1.0,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -183,8 +184,8 @@ class _KpiStrip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: context.nz.text,
-                      fontSize: 21,
+                      color: active ? context.nz.primary : context.nz.text,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                       height: 1,
                     ),
