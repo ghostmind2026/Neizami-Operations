@@ -492,7 +492,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
             crossAxisCount: columns,
             crossAxisSpacing: 9,
             mainAxisSpacing: 9,
-            childAspectRatio: .88,
+            childAspectRatio: 1.18,
           ),
           delegate: SliverChildBuilderDelegate(
             (context, index) => _PresentationCard(
