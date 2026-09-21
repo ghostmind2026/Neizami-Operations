@@ -75,53 +75,7 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
         final type = _normalizeType(field['type']);
         final defaultValue = field['default'];
 
-        if (type == 'toggle') {
-      final enabled = value == true || value == 1 || value == '1' || value == 'yes';
-      return SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
-        title: Text(enabled ? 'نعم' : 'لا'),
-        value: enabled,
-        onChanged: readonly ? null : (next) => onChanged(next ? '1' : '0'),
-      );
-    }
-
-    if (type == 'range' || type == 'scale' || type == 'star') {
-      final input = _map(field['input']);
-      final min = double.tryParse('${input['min'] ?? 0}') ?? 0;
-      final max = double.tryParse('${input['max'] ?? (type == 'star' ? 5 : 10)}') ?? (type == 'star' ? 5 : 10);
-      final step = double.tryParse('${input['step'] ?? 1}') ?? 1;
-      final current = (double.tryParse(_text(value)) ?? min).clamp(min, max).toDouble();
-      if (type == 'star') {
-        return Wrap(
-          spacing: 2,
-          children: List.generate(max.round(), (index) {
-            final n = index + 1;
-            return IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: readonly ? null : () => onChanged('$n'),
-              icon: Icon(n <= current.round() ? Icons.star_rounded : Icons.star_border_rounded),
-              color: context.nz.primary,
-            );
-          }),
-        );
-      }
-      final divisions = step > 0 ? ((max - min) / step).round() : null;
-      return Column(
-        children: [
-          Slider(
-            min: min,
-            max: max,
-            divisions: divisions != null && divisions > 0 ? divisions : null,
-            value: current,
-            label: current.toStringAsFixed(current % 1 == 0 ? 0 : 1),
-            onChanged: readonly ? null : (next) => onChanged('$next'),
-          ),
-          Text(current.toStringAsFixed(current % 1 == 0 ? 0 : 1)),
-        ],
-      );
-    }
-
-    if (type == 'checkbox') {
+        if (type == 'checkbox') {
           _values[key] = defaultValue is List
               ? List<String>.from(defaultValue.map((e) => '$e'))
               : <String>[];
@@ -447,6 +401,52 @@ class _NativeField extends StatelessWidget {
     List<Map<String, dynamic>> options,
   ) {
     final readonly = field['readonly'] == true;
+    if (type == 'toggle') {
+      final enabled = value == true || value == 1 || value == '1' || value == 'yes';
+      return SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: Text(enabled ? 'نعم' : 'لا'),
+        value: enabled,
+        onChanged: readonly ? null : (next) => onChanged(next ? '1' : '0'),
+      );
+    }
+
+    if (type == 'range' || type == 'scale' || type == 'star') {
+      final input = _map(field['input']);
+      final min = double.tryParse('${input['min'] ?? 0}') ?? 0;
+      final max = double.tryParse('${input['max'] ?? (type == 'star' ? 5 : 10)}') ?? (type == 'star' ? 5 : 10);
+      final step = double.tryParse('${input['step'] ?? 1}') ?? 1;
+      final current = (double.tryParse(_text(value)) ?? min).clamp(min, max).toDouble();
+      if (type == 'star') {
+        return Wrap(
+          spacing: 2,
+          children: List.generate(max.round(), (index) {
+            final n = index + 1;
+            return IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: readonly ? null : () => onChanged('$n'),
+              icon: Icon(n <= current.round() ? Icons.star_rounded : Icons.star_border_rounded),
+              color: context.nz.primary,
+            );
+          }),
+        );
+      }
+      final divisions = step > 0 ? ((max - min) / step).round() : null;
+      return Column(
+        children: [
+          Slider(
+            min: min,
+            max: max,
+            divisions: divisions != null && divisions > 0 ? divisions : null,
+            value: current,
+            label: current.toStringAsFixed(current % 1 == 0 ? 0 : 1),
+            onChanged: readonly ? null : (next) => onChanged('$next'),
+          ),
+          Text(current.toStringAsFixed(current % 1 == 0 ? 0 : 1)),
+        ],
+      );
+    }
+
 
     if (type == 'select') {
       final current = _text(value);
