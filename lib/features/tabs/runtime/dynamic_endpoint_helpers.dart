@@ -229,6 +229,9 @@ List<Map<String, dynamic>> _flattenKpis(dynamic raw) {
     if (cards.isEmpty) {
       final label = _firstUseful([item['label'], item['title'], item['name']]);
       final value = _firstUseful([item['value'], item['count'], item['total']]);
+      final normalized = label.trim().toLowerCase();
+      // Generic transport counters are not useful KPI cards in the mobile UI.
+      if (normalized == 'rows' || normalized == 'row' || normalized == 'records') continue;
       if (label.isNotEmpty || value.isNotEmpty) out.add(item);
       continue;
     }
