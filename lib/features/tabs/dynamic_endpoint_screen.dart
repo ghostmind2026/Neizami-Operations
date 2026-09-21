@@ -36,6 +36,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
   bool _hasMore = false;
   int _page = 1;
   int _requestSerial = 0;
+  bool _didAutoRecoverEmptyCards = false;
 
   @override
   void initState() {
@@ -134,6 +135,21 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
       final nextPage = _pageFrom(data, targetPage);
       final hasMore = _hasMoreFrom(data, page: nextPage, pageSize: _pageSize);
       final compact = _compactPayload(data);
+      final compactPresentation = _map(compact['presentation']);
+      final compactCards = _listOfMaps(compactPresentation['cards']);
+      final compactGroups = _listOfMaps(compactPresentation['groups']);
+
+      // A response containing groups but no cards is incomplete for this screen.
+      // Retry once without stale UI state instead of leaving endless skeletons.
+      if (reset && compactCards.isEmpty && compactGroups.isNotEmpty && !_didAutoRecoverEmptyCards) {
+        _didAutoRecoverEmptyCards = true;
+        _payload = compact;
+        _loading = false;
+        if (mounted) setState(() {});
+        unawaited(_load(reset: true));
+        return;
+      }
+      if (compactCards.isNotEmpty) _didAutoRecoverEmptyCards = false;
 
       setState(() {
         _payload = reset ? compact : _mergePayload(_payload, compact);
