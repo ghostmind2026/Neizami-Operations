@@ -321,9 +321,8 @@ class _GroupBrowserState extends State<_GroupBrowser> {
     var layer = widget.groups;
     var depth = 0;
     while (layer.isNotEmpty) {
-      final index = depth < _selected.length
-          ? _selected[depth].clamp(0, layer.length - 1).toInt()
-          : 0;
+      final requested = depth < _selected.length ? _selected[depth] : 0;
+      final index = requested >= 0 && requested < layer.length ? requested : 0;
       final group = layer[index];
       selectedPath.add(group);
       layer = _listOfMaps(group['children']);
@@ -387,12 +386,14 @@ class _GroupBrowserState extends State<_GroupBrowser> {
     var layer = widget.groups;
     for (var i = 0; i < level; i++) {
       if (layer.isEmpty) return const SizedBox.shrink();
-      final parent = _selected[i].clamp(0, layer.length - 1).toInt();
+      final requested = i < _selected.length ? _selected[i] : 0;
+      final parent = requested >= 0 && requested < layer.length ? requested : 0;
       layer = _listOfMaps(layer[parent]['children']);
     }
     if (layer.isEmpty) return const SizedBox.shrink();
 
-    final selectedIndex = _selected.length > level ? _selected[level] : 0;
+    final requestedIndex = _selected.length > level ? _selected[level] : 0;
+    final selectedIndex = requestedIndex >= 0 && requestedIndex < layer.length ? requestedIndex : 0;
     final sourceLabel = _text(layer.first['source_label']);
 
     return Padding(
