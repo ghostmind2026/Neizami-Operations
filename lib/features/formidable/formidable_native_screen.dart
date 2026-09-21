@@ -102,8 +102,10 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
 
   List<Map<String, dynamic>> _supportedFields(dynamic raw) {
     return _list(raw)
-        .where((field) => const {'text', 'number', 'select', 'dropdown', 'checkbox'}
-            .contains(_normalizeType(field['type'])))
+        .where((field) => const {
+              'text', 'number', 'select', 'checkbox', 'textarea',
+              'email', 'phone', 'url', 'date', 'time', 'lookup'
+            }.contains(_normalizeType(field['type'])))
         .toList();
   }
 
@@ -192,8 +194,7 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
     final form = _map(schema?['form']);
     final title = _text(form['name']).isNotEmpty ? _text(form['name']) : widget.title;
     final fields = _supportedFields(schema?['fields']);
-    final nativeReady = schema?['native_ready'] != false;
-    final mode = _text(schema?['mode']);
+    final nativeReady = fields.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -205,20 +206,14 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
                   onRetry: _load,
                   onWeb: _openWebFallback,
                 )
-              : mode == 'web' || !nativeReady
-                  ? _UnsupportedForm(
-                      schema: schema ?? const <String, dynamic>{},
-                      onWeb: _openWebFallback,
+              : fields.isEmpty
+                  ? const NzEmptyState(
+                      title: 'لا توجد حقول قابلة للعرض',
+                      message: 'لم يجد التطبيق حقول إدخال مناسبة في هذا النموذج.',
                     )
-                  : fields.isEmpty
-                      ? const NzEmptyState(
-                          title: 'لا توجد حقول مفعلة للموبايل',
-                          message: 'اختر Text / Number / Dropdown / Checkbox من إعدادات Mobile Bridge.',
-                        )
-                      : _buildForm(schema ?? const <String, dynamic>{}, fields),
+                  : _buildForm(schema ?? const <String, dynamic>{}, fields),
       bottomNavigationBar: !_loading &&
               _error == null &&
-              mode != 'web' &&
               nativeReady &&
               fields.isNotEmpty
           ? SafeArea(
@@ -458,13 +453,39 @@ class _NativeField extends StatelessWidget {
     }
 
     final numeric = type == 'number';
+    final multiline = type == 'textarea';
+    final isDate = type == 'date';
+    final isTime = type == 'time';
+    TextInputType keyboard = TextInputType.text;
+    if (numeric) keyboard = const TextInputType.numberWithOptions(decimal: true, signed: true);
+    if (type == 'email') keyboard = TextInputType.emailAddress;
+    if (type == 'phone') keyboard = TextInputType.phone;
+    if (type == 'url') keyboard = TextInputType.url;
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      readOnly: readonly,
-      keyboardType: numeric
-          ? const TextInputType.numberWithOptions(decimal: true, signed: true)
-          : TextInputType.text,
+      readOnly: readonly || isDate || isTime,
+      keyboardType: keyboard,
+      minLines: multiline ? 3 : 1,
+      maxLines: multiline ? 6 : 1,
+      onTap: isDate
+          ? () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null && controller != null) {
+                controller!.text = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+              }
+            }
+          : isTime
+              ? () async {
+                  final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                  if (picked != null && controller != null) controller!.text = picked.format(context);
+                }
+              : null,
       inputFormatters: numeric
           ? <TextInputFormatter>[
               FilteringTextInputFormatter.allow(RegExp(r'[-0-9.,]')),
@@ -548,7 +569,7 @@ class _UnsupportedForm extends StatelessWidget {
 
 String _normalizeType(dynamic raw) {
   final type = _text(raw).toLowerCase();
-  if (type == 'dropdown') return 'select';
+  if (type == 'dropdown' || type == 'radio' || type == 'data') return 'select';
   return type;
 }
 
