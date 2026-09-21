@@ -24,7 +24,7 @@ class _PresentationCard extends StatelessWidget {
     final date = _field(fields, 'date');
 
     return NzSurface(
-      padding: EdgeInsets.all(compact ? 10 : (grid ? 13 : 14)),
+      padding: EdgeInsets.all(compact ? 10 : (grid ? 12 : 13)),
       child: grid
           ? _gridContent(
               context,
@@ -77,7 +77,7 @@ class _PresentationCard extends StatelessWidget {
       children: [
         if (image.isNotEmpty) ...[
           SizedBox(
-            height: 78,
+            height: 58,
             width: double.infinity,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -135,7 +135,7 @@ class _PresentationCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: context.nz.text,
-                  fontSize: compact ? 14 : (grid ? 16 : 15.5),
+                  fontSize: compact ? 14 : (grid ? 14.5 : 15.5),
                   fontWeight: FontWeight.w900,
                   height: 1.25,
                 ),
@@ -169,7 +169,7 @@ class _PresentationCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: context.nz.text,
-              fontSize: compact ? 18 : (grid ? 24 : 20),
+              fontSize: compact ? 18 : (grid ? 22 : 20),
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -336,7 +336,7 @@ class _GroupBrowserState extends State<_GroupBrowser> {
               crossAxisCount: 2,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: 1.02,
+              childAspectRatio: 1.18,
             ),
             itemBuilder: (_, index) => _PresentationCard(
               card: cards[index],
