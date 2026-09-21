@@ -302,11 +302,13 @@ class _GroupBrowser extends StatefulWidget {
     required this.groups,
     required this.cards,
     required this.screen,
+    this.showCards = true,
   });
 
   final List<Map<String, dynamic>> groups;
   final List<Map<String, dynamic>> cards;
   final Map<String, dynamic> screen;
+  final bool showCards;
 
   @override
   State<_GroupBrowser> createState() => _GroupBrowserState();
@@ -346,7 +348,9 @@ class _GroupBrowserState extends State<_GroupBrowser> {
             onFilter: (_, __) async {},
           ),
         ],
-        if (cards.isEmpty)
+        if (!widget.showCards)
+          const SizedBox.shrink()
+        else if (cards.isEmpty)
           const NzEmptyState(
             title: 'لا توجد نتائج في هذه المجموعة',
             message: 'اختر مجموعة أخرى أو غيّر الفلاتر.',
