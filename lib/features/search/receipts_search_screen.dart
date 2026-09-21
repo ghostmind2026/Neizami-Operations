@@ -31,8 +31,7 @@ class _ReceiptsSearchScreenState extends State<ReceiptsSearchScreen> {
       final endpoint = '${home['receipts_search_endpoint'] ?? home['search_endpoint'] ?? '/search'}';
       final response = await app.api.get(endpoint.startsWith('/') ? endpoint : '/$endpoint', query: {'q': value, 'search': value});
       final payload = _map(response['payload']).isNotEmpty ? _map(response['payload']) : response;
-      final raw = payload['items'] ?? payload['results'] ?? payload['rows'] ?? const [];
-      _items = (raw as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      _items = _findRows(payload);
     } catch (error) {
       _error = '$error';
     } finally {
@@ -96,6 +95,26 @@ class _ReceiptsSearchScreenState extends State<ReceiptsSearchScreen> {
         ],
       ),
     );
+  }
+
+
+  List<Map<String, dynamic>> _findRows(dynamic value, [int depth = 0]) {
+    if (depth > 7) return const [];
+    if (value is List) {
+      final maps = value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (maps.isNotEmpty) return maps;
+      return const [];
+    }
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      // Mobile Bridge /home/search wraps the real Smart Grid response under endpoint.
+      for (final key in const ['cards', 'items', 'results', 'rows', 'data', 'endpoint', 'presentation', 'payload']) {
+        if (!map.containsKey(key)) continue;
+        final found = _findRows(map[key], depth + 1);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    return const [];
   }
 
   Map<String, dynamic> _map(dynamic value) {
