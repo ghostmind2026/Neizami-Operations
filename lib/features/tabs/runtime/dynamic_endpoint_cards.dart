@@ -24,7 +24,7 @@ class _PresentationCard extends StatelessWidget {
     final date = _field(fields, 'date');
 
     return NzSurface(
-      padding: EdgeInsets.all(compact ? 11 : 14),
+      padding: EdgeInsets.all(compact ? 10 : (grid ? 13 : 14)),
       child: grid
           ? _gridContent(
               context,
@@ -135,7 +135,7 @@ class _PresentationCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: context.nz.text,
-                  fontSize: compact ? 14 : 15.5,
+                  fontSize: compact ? 14 : (grid ? 16 : 15.5),
                   fontWeight: FontWeight.w900,
                   height: 1.25,
                 ),
@@ -169,7 +169,7 @@ class _PresentationCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: context.nz.text,
-              fontSize: compact ? 17 : 20,
+              fontSize: compact ? 18 : (grid ? 24 : 20),
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -326,6 +326,22 @@ class _GroupBrowserState extends State<_GroupBrowser> {
           const NzEmptyState(
             title: 'لا توجد نتائج في هذه المجموعة',
             message: 'اختر مجموعة أخرى أو غيّر الفلاتر.',
+          )
+        else if (_text(widget.screen['layout']) == 'grid')
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: cards.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.02,
+            ),
+            itemBuilder: (_, index) => _PresentationCard(
+              card: cards[index],
+              grid: true,
+            ),
           )
         else
           ListView.separated(
