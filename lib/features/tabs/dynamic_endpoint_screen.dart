@@ -486,15 +486,13 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
                   padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
                   child: _GroupBrowser(
                     groups: groups,
-                    cards: const <Map<String, dynamic>>[],
+                    cards: cards,
                     screen: screen,
-                    showCards: false,
                   ),
                 ),
-              ),
-            // Cards are always rendered by the endpoint dataset itself.
-            // Groups are navigation/presentation only and must never replace rows.
-            _cardsSliver(cards, screen),
+              )
+            else
+              _cardsSliver(cards, screen),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 6, 14, 28),
