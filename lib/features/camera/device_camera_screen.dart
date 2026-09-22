@@ -18,6 +18,7 @@ class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
   final List<XFile> _images = [];
   final TextEditingController _noteController = TextEditingController();
   bool _cameraOpened = false;
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -91,6 +92,37 @@ class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
   Future<void> _gallery() async {
     final images = await _picker.pickMultiImage(imageQuality: 88);
     if (images.isNotEmpty && mounted) setState(() => _images.addAll(images));
+  }
+
+  Future<void> _upload() async {
+    if (_images.isEmpty || _uploading) return;
+    setState(() => _uploading = true);
+    try {
+      final api = context.read<AppController>().api;
+      final note = _noteController.text.trim();
+      for (final image in List<XFile>.from(_images)) {
+        await api.uploadFile(
+          '/device-photos',
+          filePath: image.path,
+          fields: {'note': note},
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _images.clear();
+        _noteController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم رفع الصور بنجاح.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر رفع الصور: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   @override
@@ -181,11 +213,15 @@ class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
           if (_images.isNotEmpty) ...[
             const SizedBox(height: 18),
             FilledButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('سيتم ربط الرفع بالسجل المختار عند تفعيل Endpoint المعرض.')),
-              ),
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: Text('رفع ${_images.length} صورة'),
+              onPressed: _uploading ? null : _upload,
+              icon: _uploading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_upload_outlined),
+              label: Text(_uploading ? 'جاري الرفع...' : 'رفع ${_images.length} صورة'),
             ),
           ],
         ],
