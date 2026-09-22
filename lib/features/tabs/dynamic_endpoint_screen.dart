@@ -488,6 +488,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
                     groups: groups,
                     cards: cards,
                     screen: screen,
+                    onGroupFilter: _setFilter,
                   ),
                 ),
               )
