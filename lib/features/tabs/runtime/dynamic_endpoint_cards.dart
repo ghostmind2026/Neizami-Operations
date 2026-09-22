@@ -595,14 +595,22 @@ class _GroupBrowserState extends State<_GroupBrowser> {
                       // pagination. Prefer the raw group value supplied by
                       // Smart Grid; the label is presentation only.
                       final key = _text(item['source_key']);
-                      final rawValue = _text(
+                      final explicitValue = _text(
                         item['source_value'] ??
                             item['value'] ??
                             item['group_value'] ??
                             item['raw_value'],
                       );
-                      if (key.isNotEmpty) {
-                        await widget.onGroupFilter(key, rawValue);
+                      // Current Smart Grid group metadata can expose only
+                      // source_key/source_label/label/count/entry_ids. In that
+                      // shape explicitValue is empty, which previously called
+                      // _setFilter(key, '') and REMOVED the filter. Use the
+                      // actual group label as the server value fallback.
+                      final labelValue = _text(item['label']);
+                      final filterValue =
+                          explicitValue.isNotEmpty ? explicitValue : labelValue;
+                      if (key.isNotEmpty && filterValue.isNotEmpty) {
+                        await widget.onGroupFilter(key, filterValue);
                       }
                     },
                     child: Container(
