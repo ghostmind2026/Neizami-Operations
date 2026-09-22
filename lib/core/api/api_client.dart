@@ -52,6 +52,33 @@ class ApiClient {
   }) =>
       _send('POST', path, body: body, query: query);
 
+  Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required String filePath,
+    String field = 'image',
+    Map<String, String>? fields,
+  }) async {
+    final token = await sessions.readToken();
+    final uri = AppConfig.uri(path);
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json'
+      ..headers['X-Neizami-Mobile'] = '1';
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    if (fields != null) request.fields.addAll(fields);
+    request.files.add(await http.MultipartFile.fromPath(field, filePath));
+    try {
+      final streamed = await _client.send(request).timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+      return _decode(response, method: 'POST', uri: uri);
+    } on SocketException {
+      throw const ApiException('تعذر الاتصال بالخادم. تحقق من الإنترنت.');
+    } on http.ClientException catch (exception) {
+      throw ApiException('تعذر الاتصال بالخادم: ${exception.message}');
+    }
+  }
+
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
