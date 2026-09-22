@@ -438,12 +438,14 @@ class _GroupBrowser extends StatefulWidget {
     required this.groups,
     required this.cards,
     required this.screen,
+    required this.onGroupFilter,
     this.showCards = true,
   });
 
   final List<Map<String, dynamic>> groups;
   final List<Map<String, dynamic>> cards;
   final Map<String, dynamic> screen;
+  final Future<void> Function(String key, String value) onGroupFilter;
   final bool showCards;
 
   @override
@@ -468,7 +470,7 @@ class _GroupBrowserState extends State<_GroupBrowser> {
     }
 
     final selected = selectedPath.isEmpty ? <String, dynamic>{} : selectedPath.last;
-    final cards = _cardsForGroup(selected, widget.cards);
+    final cards = widget.cards;
     final kpis = _flattenKpis(selected['kpis']);
 
     return Column(
@@ -580,7 +582,7 @@ class _GroupBrowserState extends State<_GroupBrowser> {
                   borderRadius: BorderRadius.circular(10),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(10),
-                    onTap: () {
+                    onTap: () async {
                       setState(() {
                         while (_selected.length <= level) _selected.add(0);
                         _selected[level] = index;
@@ -588,6 +590,20 @@ class _GroupBrowserState extends State<_GroupBrowser> {
                           _selected.removeRange(level + 1, _selected.length);
                         }
                       });
+
+                      // A KPI group must filter the server dataset BEFORE
+                      // pagination. Prefer the raw group value supplied by
+                      // Smart Grid; the label is presentation only.
+                      final key = _text(item['source_key']);
+                      final rawValue = _text(
+                        item['source_value'] ??
+                            item['value'] ??
+                            item['group_value'] ??
+                            item['raw_value'],
+                      );
+                      if (key.isNotEmpty) {
+                        await widget.onGroupFilter(key, rawValue);
+                      }
                     },
                     child: Container(
                       constraints: const BoxConstraints(minWidth: 64),
