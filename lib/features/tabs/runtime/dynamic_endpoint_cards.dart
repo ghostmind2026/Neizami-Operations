@@ -36,12 +36,9 @@ class _PresentationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.nz.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border(
-          top: BorderSide(color: context.nz.border),
-          bottom: BorderSide(color: context.nz.border),
-          left: BorderSide(color: accent, width: 2.5),
-          right: BorderSide(color: context.nz.border),
-        ),
+        // BoxDecoration cannot combine borderRadius with non-uniform Border
+        // colors. Keep a uniform outline; the accent is drawn separately.
+        border: Border.all(color: context.nz.border),
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: .055),
@@ -50,7 +47,23 @@ class _PresentationCard extends StatelessWidget {
           ),
         ],
       ),
-      child: grid
+      child: Stack(
+        children: [
+          PositionedDirectional(
+            start: 0,
+            top: 4,
+            bottom: 4,
+            child: Container(
+              width: 2.5,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 5),
+            child: grid
           ? _gridContent(
               context,
               title: title,
@@ -83,6 +96,9 @@ class _PresentationCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
     );
   }
 
