@@ -23,7 +23,10 @@ class _PresentationCard extends StatelessWidget {
     final reference = _field(fields, 'reference');
     final date = _field(fields, 'date');
 
-    return Container(
+    final rowMode = !grid && !compact;
+    final phone = _phoneFromSubtitle(subtitle);
+
+    final content = Container(
       padding: EdgeInsets.all(compact ? 10 : (grid ? 12 : 13)),
       decoration: BoxDecoration(
         color: context.nz.surface,
@@ -72,6 +75,73 @@ class _PresentationCard extends StatelessWidget {
                 ),
               ],
             ),
+    );
+
+    if (!rowMode || phone.isEmpty) return content;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _showContactActions(context, phone),
+      child: content,
+    );
+  }
+
+  String _phoneFromSubtitle(String value) {
+    final normalized = value
+        .replaceAll(RegExp(r'[^0-9+٠-٩۰-۹]'), '')
+        .replaceAllMapped(RegExp(r'[٠-٩]'), (m) => '${'٠١٢٣٤٥٦٧٨٩'.indexOf(m[0]!)}')
+        .replaceAllMapped(RegExp(r'[۰-۹]'), (m) => '${'۰۱۲۳۴۵۶۷۸۹'.indexOf(m[0]!)}');
+    final digits = normalized.replaceAll('+', '');
+    return digits.length >= 7 ? normalized : '';
+  }
+
+  String _whatsAppPhone(String phone) {
+    var value = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (value.startsWith('+')) return value.substring(1);
+    if (value.startsWith('00')) return value.substring(2);
+    // Jordan local mobile/landline convention used by the operations app.
+    if (value.startsWith('0')) return '962${value.substring(1)}';
+    return value;
+  }
+
+  Future<void> _showContactActions(BuildContext context, String phone) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await launchUrl(Uri(scheme: 'tel', path: phone));
+                  },
+                  icon: const Icon(Icons.call_rounded),
+                  label: const Text('اتصال'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    final wa = _whatsAppPhone(phone);
+                    await launchUrl(
+                      Uri.parse('https://wa.me/$wa'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('واتس اب'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
