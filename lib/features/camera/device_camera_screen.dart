@@ -16,10 +16,76 @@ class DeviceCameraScreen extends StatefulWidget {
 class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _images = [];
+  final TextEditingController _noteController = TextEditingController();
+  bool _cameraOpened = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openCameraOnce());
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openCameraOnce() async {
+    if (_cameraOpened || !mounted) return;
+    _cameraOpened = true;
+    await _capture();
+  }
 
   Future<void> _capture() async {
     final image = await _picker.pickImage(source: ImageSource.camera, imageQuality: 88);
-    if (image != null && mounted) setState(() => _images.add(image));
+    if (image != null && mounted) {
+      setState(() => _images.add(image));
+      await _showNoteSheet();
+    }
+  }
+
+  Future<void> _showNoteSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          18,
+          18,
+          18,
+          18 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'ملاحظة على الجهاز',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _noteController,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 4,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                hintText: 'اكتب ملاحظة اختيارية...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => Navigator.of(sheetContext).pop(),
+              child: const Text('حفظ الملاحظة'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _gallery() async {
@@ -54,6 +120,17 @@ class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _noteController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'ملاحظة',
+              hintText: 'ملاحظة اختيارية على الجهاز...',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 18),
           if (_images.isEmpty)
