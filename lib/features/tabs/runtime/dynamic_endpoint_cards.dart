@@ -234,7 +234,7 @@ class _PresentationCard extends StatelessWidget {
         const Spacer(),
         if (primaryValue.isNotEmpty || secondaryValue.isNotEmpty)
           Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (secondaryValue.isNotEmpty)
                 Expanded(
