@@ -475,15 +475,12 @@ class _GroupBrowserState extends State<_GroupBrowser> {
       final id = int.tryParse('${row['entry_id'] ?? row['id'] ?? ''}');
       if (id != null) ids.add(id);
     }
-    // Do not let grouping become the data source. Cards are the authoritative
-    // paged result set; group membership is only a presentation filter.
+    // Group metadata is only a filter over cards already returned by the
+    // independent rows request. It never participates in fetching the cards.
     if (ids.isEmpty) return cards;
-    final matched = cards.where((card) {
+    return cards.where((card) {
       final id = int.tryParse('${card['entry_id'] ?? card['id'] ?? ''}');
       return id != null && ids.contains(id);
     }).toList();
-    // Some Smart Grid datasets use parent/repeater/runtime row identifiers that
-    // intentionally differ from the card entry_id. Never blank the dataset.
-    return matched.isEmpty ? cards : matched;
   }
 }
