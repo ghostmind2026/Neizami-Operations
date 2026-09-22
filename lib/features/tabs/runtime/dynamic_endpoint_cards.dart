@@ -545,33 +545,47 @@ class _GroupBrowserState extends State<_GroupBrowser> {
             title: 'لا توجد نتائج في هذه المجموعة',
             message: 'اختر مجموعة أخرى أو غيّر الفلاتر.',
           )
-        else if (_text(widget.screen['layout']) == 'grid')
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: cards.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.18,
-            ),
-            itemBuilder: (_, index) => _PresentationCard(
-              card: cards[index],
-              grid: true,
-            ),
-          )
         else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: cards.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 9),
-            itemBuilder: (_, index) => _PresentationCard(
-              card: cards[index],
-              compact: _text(widget.screen['layout']) == 'compact',
-            ),
-          ),
+          _groupCards(cards),
+      ],
+    );
+  }
+
+  Widget _groupCards(List<Map<String, dynamic>> cards) {
+    final layout = _text(widget.screen['layout']);
+    if (layout == 'grid') {
+      // This browser itself lives inside a SliverToBoxAdapter. A nested
+      // GridView/ListView here can enter layout with unbounded height and
+      // trigger RenderBox/sliver assertions. Build finite rows instead.
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final itemWidth = (width - 10) / 2;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final card in cards)
+                SizedBox(
+                  width: itemWidth,
+                  child: AspectRatio(
+                    aspectRatio: 1.18,
+                    child: _PresentationCard(card: card, grid: true),
+                  ),
+                ),
+            ],
+          );
+        },
+      );
+    }
+
+    final compact = layout == 'compact';
+    return Column(
+      children: [
+        for (var i = 0; i < cards.length; i++) ...[
+          _PresentationCard(card: cards[i], compact: compact),
+          if (i != cards.length - 1) const SizedBox(height: 9),
+        ],
       ],
     );
   }
