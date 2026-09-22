@@ -371,45 +371,18 @@ class _PricePanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: tint.withValues(alpha: .13)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Icon(
-                selling ? Icons.sell_rounded : Icons.stacked_bar_chart_rounded,
-                size: 13,
-                color: tint,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: tint,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: context.nz.text,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-        ],
+      alignment: AlignmentDirectional.centerEnd,
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.end,
+        style: TextStyle(
+          color: context.nz.text,
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          height: 1,
+        ),
       ),
     );
   }
