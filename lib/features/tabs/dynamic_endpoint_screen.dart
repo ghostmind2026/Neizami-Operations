@@ -36,6 +36,7 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
   bool _hasMore = false;
   int _page = 1;
   int _requestSerial = 0;
+  int _metaRequestSerial = 0;
 
   @override
   void initState() {
@@ -119,6 +120,8 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
         'page': targetPage,
         'per_page': _pageSize,
         'limit': _pageSize,
+        // Rows/cards must return immediately; KPI/groups are fetched separately.
+        'presentation_meta_only': 0,
         if (search.isNotEmpty && !_searchTooShort) 'search': search,
         if (search.isNotEmpty && !_searchTooShort) 'q': search,
         if (_filters.isNotEmpty) 'filters': jsonEncode(_filters),
@@ -139,6 +142,10 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
         _page = nextPage;
         _hasMore = hasMore;
       });
+
+      // KPI/groups are presentation metadata over the full filtered dataset.
+      // Load them after cards are already visible; never make cards wait for them.
+      if (reset) unawaited(_loadPresentationMeta());
     } catch (error) {
       if (!mounted || requestId != _requestSerial) return;
       if (_payload == null || reset) {
@@ -155,6 +162,40 @@ class _DynamicEndpointScreenState extends State<DynamicEndpointScreen> {
           _loadingMore = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadPresentationMeta() async {
+    final requestId = ++_metaRequestSerial;
+    try {
+      final search = _searchController.text.trim();
+      final query = <String, dynamic>{
+        'page': 1,
+        'per_page': 1,
+        'limit': 1,
+        'presentation_meta_only': 1,
+        if (search.isNotEmpty && !_searchTooShort) 'search': search,
+        if (search.isNotEmpty && !_searchTooShort) 'q': search,
+        if (_filters.isNotEmpty) 'filters': jsonEncode(_filters),
+      };
+      final data = await context.read<AppController>().api.get(
+        '/tabs/${widget.tab['key']}',
+        query: query,
+      );
+      if (!mounted || requestId != _metaRequestSerial) return;
+      final incoming = _map(data['presentation']);
+      final current = _map(_payload?['presentation']);
+      final merged = <String, dynamic>{...current};
+      if (incoming['kpis'] != null) merged['kpis'] = incoming['kpis'];
+      if (incoming['groups'] != null) merged['groups'] = incoming['groups'];
+      setState(() {
+        _payload = <String, dynamic>{
+          ...?_payload,
+          'presentation': merged,
+        };
+      });
+    } catch (_) {
+      // Metadata is optional. Cards remain usable even if KPI/group calculation fails.
     }
   }
 
