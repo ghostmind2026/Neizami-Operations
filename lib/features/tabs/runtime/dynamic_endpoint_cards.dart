@@ -113,6 +113,19 @@ class _PresentationCard extends StatelessWidget {
     required Map<String, dynamic> reference,
     required Map<String, dynamic> date,
   }) {
+    if (image.isEmpty) {
+      return _noImageGridContent(
+        context,
+        title: title,
+        subtitle: subtitle,
+        primary: primary,
+        secondary: secondary,
+        badge: badge,
+        reference: reference,
+        date: date,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -148,6 +161,101 @@ class _PresentationCard extends StatelessWidget {
             date: date,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _noImageGridContent(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Map<String, dynamic> primary,
+    required Map<String, dynamic> secondary,
+    required Map<String, dynamic> badge,
+    required Map<String, dynamic> reference,
+    required Map<String, dynamic> date,
+  }) {
+    final primaryValue = _fieldValue(primary);
+    final secondaryValue = _fieldValue(secondary);
+    final primaryLabel = _fieldLabel(primary).isEmpty ? 'سعر البيع' : _fieldLabel(primary);
+    final secondaryLabel = _fieldLabel(secondary).isEmpty ? 'سعر التكلفة' : _fieldLabel(secondary);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                title.isEmpty ? '—' : title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                  color: context.nz.text,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w900,
+                  height: 1.28,
+                ),
+              ),
+            ),
+            if (_fieldValue(badge).isNotEmpty) ...[
+              const SizedBox(width: 6),
+              _ValuePill(field: badge, accent: true),
+            ],
+          ],
+        ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 5),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.nz.muted,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        if (_fieldValue(reference).isNotEmpty || _fieldValue(date).isNotEmpty) ...[
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            children: [
+              if (_fieldValue(reference).isNotEmpty) _ValuePill(field: reference),
+              if (_fieldValue(date).isNotEmpty)
+                _ValuePill(field: date, icon: Icons.schedule_rounded),
+            ],
+          ),
+        ],
+        const Spacer(),
+        if (primaryValue.isNotEmpty || secondaryValue.isNotEmpty)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (secondaryValue.isNotEmpty)
+                Expanded(
+                  child: _PricePanel(
+                    label: secondaryLabel,
+                    value: secondaryValue,
+                    selling: false,
+                  ),
+                ),
+              if (primaryValue.isNotEmpty && secondaryValue.isNotEmpty)
+                const SizedBox(width: 7),
+              if (primaryValue.isNotEmpty)
+                Expanded(
+                  child: _PricePanel(
+                    label: primaryLabel,
+                    value: primaryValue,
+                    selling: true,
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
@@ -237,6 +345,72 @@ class _PresentationCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _PricePanel extends StatelessWidget {
+  const _PricePanel({
+    required this.label,
+    required this.value,
+    required this.selling,
+  });
+
+  final String label;
+  final String value;
+  final bool selling;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = selling ? context.nz.success : context.nz.primary;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 67),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(tint.withValues(alpha: .09), context.nz.surface),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tint.withValues(alpha: .13)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(
+                selling ? Icons.sell_rounded : Icons.stacked_bar_chart_rounded,
+                size: 13,
+                color: tint,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tint,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.nz.text,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
