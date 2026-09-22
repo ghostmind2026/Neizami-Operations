@@ -23,14 +23,6 @@ class _PresentationCard extends StatelessWidget {
     final reference = _field(fields, 'reference');
     final date = _field(fields, 'date');
 
-    final primaryText = _fieldValue(primary);
-    final numeric = double.tryParse(primaryText.replaceAll(',', ''));
-    final accent = numeric != null && numeric <= 0
-        ? context.nz.danger
-        : numeric != null && numeric <= 5
-            ? context.nz.warning
-            : context.nz.primary;
-
     return Container(
       padding: EdgeInsets.all(compact ? 10 : (grid ? 12 : 13)),
       decoration: BoxDecoration(
@@ -41,29 +33,13 @@ class _PresentationCard extends StatelessWidget {
         border: Border.all(color: context.nz.border),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: .055),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: context.nz.text.withValues(alpha: .035),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          PositionedDirectional(
-            start: 0,
-            top: 4,
-            bottom: 4,
-            child: Container(
-              width: 2.5,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 5),
-            child: grid
+      child: grid
           ? _gridContent(
               context,
               title: title,
@@ -96,9 +72,6 @@ class _PresentationCard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -364,8 +337,8 @@ class _PricePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint = selling ? context.nz.success : context.nz.primary;
     return Container(
-      constraints: const BoxConstraints(minHeight: 67),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Color.alphaBlend(tint.withValues(alpha: .09), context.nz.surface),
         borderRadius: BorderRadius.circular(10),
@@ -542,7 +515,7 @@ class _GroupBrowserState extends State<_GroupBrowser> {
                 SizedBox(
                   width: itemWidth,
                   child: AspectRatio(
-                    aspectRatio: 1.18,
+                    aspectRatio: 1.28,
                     child: _PresentationCard(card: card, grid: true),
                   ),
                 ),
