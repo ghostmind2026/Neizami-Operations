@@ -594,26 +594,69 @@ class _GroupBrowserState extends State<_GroupBrowser> {
             const SizedBox(height: 5),
           ],
           SizedBox(
-            height: 39,
+            height: 40,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: layer.length,
               separatorBuilder: (_, __) => const SizedBox(width: 7),
               itemBuilder: (_, index) {
                 final item = layer[index];
-                return NzFilterChip(
-                  label: _text(item['label']),
-                  count: _text(item['count']),
-                  selected: selectedIndex == index,
-                  onSelected: () {
-                    setState(() {
-                      while (_selected.length <= level) _selected.add(0);
-                      _selected[level] = index;
-                      if (_selected.length > level + 1) {
-                        _selected.removeRange(level + 1, _selected.length);
-                      }
-                    });
-                  },
+                final selected = selectedIndex == index;
+                return Material(
+                  color: selected ? context.nz.primary : context.nz.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      setState(() {
+                        while (_selected.length <= level) _selected.add(0);
+                        _selected[level] = index;
+                        if (_selected.length > level + 1) {
+                          _selected.removeRange(level + 1, _selected.length);
+                        }
+                      });
+                    },
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 64),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? context.nz.primary
+                              : context.nz.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _text(item['label']),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selected ? Colors.white : context.nz.text,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (_text(item['count']).isNotEmpty) ...[
+                            const SizedBox(width: 7),
+                            Text(
+                              _text(item['count']),
+                              style: TextStyle(
+                                color: selected
+                                    ? Colors.white.withValues(alpha: .82)
+                                    : context.nz.muted,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
