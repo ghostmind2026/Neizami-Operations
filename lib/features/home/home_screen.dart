@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app/app_controller.dart';
 import '../approvals/approvals_screen.dart';
 import '../camera/device_camera_screen.dart';
 import '../formidable/formidable_web_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../notifier/compose_notification_screen.dart';
+import '../voice/voice_form_screen.dart';
 import '../search/receipts_search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -21,6 +22,7 @@ class HomeScreen extends StatelessWidget {
     final actions = (b.home['actions'] as List? ?? const [])
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => '${item['type'] ?? ''}' != 'camera')
         .toList();
     final name = _first(
       b.employee,
@@ -141,26 +143,54 @@ class HomeScreen extends StatelessWidget {
                   },
                 ),
               ],
-              const SizedBox(height: 12),
-              Material(
-                color: theme.secondary,
-                borderRadius: BorderRadius.circular(theme.radius),
-                child: ListTile(
-                  dense: true,
-                  onTap: () => _open(context, const ComposeNotificationScreen()),
-                  leading: Icon(Icons.notifications_active_rounded, color: theme.primary),
-                  title: Text(
-                    '${(b.home['notifier_banner'] as Map?)?['label'] ?? 'إرسال إشعار'}',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  trailing: const Icon(Icons.arrow_back_ios_new_rounded, size: 15),
-                ),
-              ),
+              const SizedBox(height: 84),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          decoration: BoxDecoration(
+            color: theme.surface,
+            border: Border(top: BorderSide(color: theme.border)),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: _BottomAction(
+                icon: Icons.camera_alt_rounded,
+                label: 'الكاميرا',
+                onTap: () => _openCameraFast(context),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: _BottomAction(
+                icon: Icons.mic_rounded,
+                label: 'تسجيل صوتي',
+                onTap: () => _open(context, const VoiceFormScreen()),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: _BottomAction(
+                icon: Icons.notifications_rounded,
+                label: 'Notifier',
+                badge: _count(badges['notifications']),
+                onTap: () => _open(context, const NotificationsScreen()),
+              )),
             ],
           ),
         ),
       ),
     );
+  }
+
+  static Future<void> _openCameraFast(BuildContext context) async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 88,
+      requestFullMetadata: false,
+    );
+    if (image == null || !context.mounted) return;
+    _open(context, DeviceCameraScreen(initialImage: image, openCameraOnStart: false));
   }
 
   static void _runAction(BuildContext context, Map<String, dynamic> action) {
@@ -225,7 +255,7 @@ class _Metric extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
           decoration: BoxDecoration(
             border: Border.all(color: branding.border),
             borderRadius: BorderRadius.circular(15),
@@ -233,10 +263,12 @@ class _Metric extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(height: 5),
-              Text('$value', style: TextStyle(fontSize: 20, height: 1, fontWeight: FontWeight.w900, color: branding.text)),
-              const SizedBox(height: 5),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, color: color, size: 17),
+                const SizedBox(width: 4),
+                Text('$value', style: TextStyle(fontSize: 17, height: 1, fontWeight: FontWeight.w900, color: branding.text)),
+              ]),
+              const SizedBox(height: 6),
               Text(
                 label,
                 maxLines: 2,
@@ -280,6 +312,44 @@ class _Quick extends StatelessWidget {
               const SizedBox(height: 8),
               Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _BottomAction extends StatelessWidget {
+  const _BottomAction({required this.icon, required this.label, required this.onTap, this.badge = 0});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = context.read<AppController>().bootstrap!.branding;
+    return Material(
+      color: b.surfaceSoft,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Badge(
+                isLabelVisible: badge > 0,
+                label: Text('$badge'),
+                child: Icon(icon, color: b.primary, size: 21),
+              ),
+              const SizedBox(width: 6),
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800))),
             ],
           ),
         ),
