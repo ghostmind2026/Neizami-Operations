@@ -15,6 +15,8 @@ class AppController extends ChangeNotifier {
 
   BootstrapData? bootstrap;
   Map<String, dynamic> liveBadges = <String, dynamic>{};
+  final Map<String, Map<String, dynamic>> _formSchemaCache = <String, Map<String, dynamic>>{};
+  Map<String, dynamic>? _voiceCommandsCache;
   bool loading = true;
   bool refreshingDashboard = false;
   String? error;
@@ -161,6 +163,22 @@ class AppController extends ChangeNotifier {
     };
   }
 
+  Future<Map<String, dynamic>> formSchema(String formKey, {bool refresh = false}) async {
+    if (!refresh && _formSchemaCache.containsKey(formKey)) {
+      return _formSchemaCache[formKey]!;
+    }
+    final data = await api.get('/forms/$formKey');
+    _formSchemaCache[formKey] = data;
+    return data;
+  }
+
+  Future<Map<String, dynamic>> voiceCommands({bool refresh = false}) async {
+    if (!refresh && _voiceCommandsCache != null) return _voiceCommandsCache!;
+    final data = await api.get('/voice/commands');
+    _voiceCommandsCache = data;
+    return data;
+  }
+
   Future<void> refreshAll() async {
     bootstrap = BootstrapData.fromJson(await api.get('/bootstrap'));
     liveBadges = <String, dynamic>{};
@@ -174,6 +192,8 @@ class AppController extends ChangeNotifier {
     } catch (_) {}
     await sessions.clear();
     bootstrap = null;
+    _formSchemaCache.clear();
+    _voiceCommandsCache = null;
     liveBadges = <String, dynamic>{};
     refreshingDashboard = false;
     notifyListeners();
