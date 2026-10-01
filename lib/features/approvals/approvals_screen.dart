@@ -125,9 +125,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                         ],
                       )
                     : ListView.separated(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         itemCount: _items.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, index) {
                           final item = _items[index];
                           return _ApprovalCard(
@@ -187,7 +187,17 @@ class _ApprovalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  color: branding.primary.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(showActions ? Icons.approval_rounded : Icons.pending_actions_rounded,
+                    color: branding.primary, size: 17),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900))),
               Text('${item['created_at'] ?? ''}', style: TextStyle(color: branding.muted, fontSize: 11)),
             ],
           ),
@@ -200,10 +210,10 @@ class _ApprovalCard extends StatelessWidget {
             Row(children: [const Icon(Icons.person_outline_rounded, size: 17), const SizedBox(width: 5), Text(requestedBy)]),
           ],
           if (data.isNotEmpty) ...[
-            const Divider(height: 24),
+            const Divider(height: 18),
             ...data.entries.take(8).map(
               (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 5),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
