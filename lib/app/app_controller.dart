@@ -88,7 +88,10 @@ class AppController extends ChangeNotifier {
 
     // Home can render immediately. Dashboard counters refresh in parallel
     // instead of keeping login/splash blocked behind extra endpoints.
-    unawaited(refreshDashboard());
+    // Let the first home frame render before starting secondary counters.
+    Timer(const Duration(milliseconds: 450), () {
+      if (bootstrap != null) unawaited(refreshDashboard());
+    });
   }
 
   Future<void> refreshDashboard() async {
