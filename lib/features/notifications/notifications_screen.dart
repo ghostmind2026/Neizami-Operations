@@ -136,13 +136,20 @@ class _NotificationCard extends StatelessWidget {
             : type == 'star'
                 ? branding.warning
                 : branding.primary;
+    final visualIcon = type == 'star'
+        ? Icons.star_rounded
+        : type == 'warning_card'
+            ? Icons.style_rounded
+            : type == 'red_card'
+                ? Icons.gpp_bad_rounded
+                : Icons.notifications_rounded;
     final title = '${item['title'] ?? item['subject'] ?? 'إشعار'}';
     final message =
         '${item['message'] ?? item['body'] ?? item['content'] ?? ''}';
     final date = '${item['created_at'] ?? item['date'] ?? ''}';
 
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: branding.surface,
         borderRadius: BorderRadius.circular(branding.radius),
@@ -152,15 +159,15 @@ class _NotificationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(Icons.notifications_rounded, color: accent),
+            child: Icon(visualIcon, color: accent, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,12 +180,12 @@ class _NotificationCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     message,
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (date.trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 5),
                   Text(
                     date,
                     style: TextStyle(color: branding.muted, fontSize: 12),
