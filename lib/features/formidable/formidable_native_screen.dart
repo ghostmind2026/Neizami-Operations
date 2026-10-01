@@ -11,10 +11,12 @@ class FormidableNativeScreen extends StatefulWidget {
     super.key,
     required this.formKey,
     required this.title,
+    this.initialValues = const <String, dynamic>{},
   });
 
   final String formKey;
   final String title;
+  final Map<String, dynamic> initialValues;
 
   @override
   State<FormidableNativeScreen> createState() => _FormidableNativeScreenState();
@@ -54,9 +56,7 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
     });
 
     try {
-      final data = await context.read<AppController>().api.get(
-        '/forms/${widget.formKey}',
-      );
+      final data = await context.read<AppController>().formSchema(widget.formKey);
       if (!mounted) return;
 
       for (final controller in _controllers.values) {
@@ -73,7 +73,9 @@ class _FormidableNativeScreenState extends State<FormidableNativeScreen> {
         final key = _text(field['key']);
         if (key.isEmpty) continue;
         final type = _normalizeType(field['type']);
-        final defaultValue = field['default'];
+        final defaultValue = widget.initialValues.containsKey(key)
+            ? widget.initialValues[key]
+            : field['default'];
 
         if (type == 'checkbox') {
           _values[key] = defaultValue is List
