@@ -7,7 +7,10 @@ import 'package:provider/provider.dart';
 import '../../app/app_controller.dart';
 
 class DeviceCameraScreen extends StatefulWidget {
-  const DeviceCameraScreen({super.key});
+  const DeviceCameraScreen({super.key, this.initialImage, this.openCameraOnStart = true});
+
+  final XFile? initialImage;
+  final bool openCameraOnStart;
 
   @override
   State<DeviceCameraScreen> createState() => _DeviceCameraScreenState();
@@ -23,7 +26,10 @@ class _DeviceCameraScreenState extends State<DeviceCameraScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openCameraOnce());
+    if (widget.initialImage != null) _images.add(widget.initialImage!);
+    if (widget.openCameraOnStart && widget.initialImage == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openCameraOnce());
+    }
   }
 
   @override
