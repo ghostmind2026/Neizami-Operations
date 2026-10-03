@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../config/app_config.dart';
 import '../core/api/api_client.dart';
@@ -12,6 +13,11 @@ class AppController extends ChangeNotifier {
 
   final ApiClient api;
   final SessionStore sessions;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  bool biometricAvailable = false;
+  bool biometricEnabled = false;
+  bool biometricAuthenticating = false;
 
   BootstrapData? bootstrap;
   Map<String, dynamic> liveBadges = <String, dynamic>{};
@@ -34,7 +40,10 @@ class AppController extends ChangeNotifier {
     loading = true;
     notifyListeners();
     final token = await sessions.readToken();
-    if (token != null && token.isNotEmpty) {
+    biometricAvailable = await _checkBiometricAvailable();
+    biometricEnabled = await sessions.biometricEnabled();
+
+    if (token != null && token.isNotEmpty && !biometricEnabled) {
       try {
         await loadBootstrap();
       } catch (_) {
@@ -42,6 +51,58 @@ class AppController extends ChangeNotifier {
       }
     }
     loading = false;
+    notifyListeners();
+  }
+
+  Future<bool> _checkBiometricAvailable() async {
+    try {
+      return await _localAuth.isDeviceSupported() &&
+          await _localAuth.canCheckBiometrics;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> authenticateWithBiometrics() async {
+    if (biometricAuthenticating) return false;
+    final token = await sessions.readToken();
+    if (token == null || token.isEmpty) return false;
+
+    biometricAuthenticating = true;
+    error = null;
+    notifyListeners();
+    try {
+      final ok = await _localAuth.authenticate(
+        localizedReason: 'استخدم البصمة للدخول إلى Neizami Operations',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+          useErrorDialogs: true,
+        ),
+      );
+      if (!ok) return false;
+      await loadBootstrap();
+      return true;
+    } catch (exception) {
+      error = 'تعذر تسجيل الدخول بالبصمة: $exception';
+      return false;
+    } finally {
+      biometricAuthenticating = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> enableBiometricLogin() async {
+    biometricAvailable = await _checkBiometricAvailable();
+    if (!biometricAvailable) return;
+    await sessions.setBiometricEnabled(true);
+    biometricEnabled = true;
+    notifyListeners();
+  }
+
+  Future<void> disableBiometricLogin() async {
+    await sessions.setBiometricEnabled(false);
+    biometricEnabled = false;
     notifyListeners();
   }
 
@@ -71,6 +132,11 @@ class AppController extends ChangeNotifier {
       }
 
       await sessions.saveToken(accessToken);
+      biometricAvailable = await _checkBiometricAvailable();
+      if (biometricAvailable) {
+        await sessions.setBiometricEnabled(true);
+        biometricEnabled = true;
+      }
       await loadBootstrap();
     } catch (exception) {
       await sessions.clear();
