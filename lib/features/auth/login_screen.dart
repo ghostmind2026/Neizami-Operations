@@ -16,6 +16,24 @@ class _LoginScreenState extends State<LoginScreen> {
   bool hidePassword = true;
   bool busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final app = context.read<AppController>();
+      if (app.biometricEnabled && app.biometricAvailable) {
+        app.authenticateWithBiometrics();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    username.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
   Future<void> submit() async {
     if (username.text.trim().isEmpty || password.text.isEmpty) return;
     setState(() => busy = true);
@@ -96,17 +114,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: busy ? null : submit,
-                    child: busy
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('تسجيل الدخول'),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: busy ? null : submit,
+                      child: busy
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('تسجيل الدخول'),
+                    ),
                   ),
-                ],
+                  if (app.biometricEnabled && app.biometricAvailable) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: app.biometricAuthenticating
+                            ? null
+                            : app.authenticateWithBiometrics,
+                        icon: const Icon(Icons.fingerprint_rounded, size: 25),
+                        label: Text(app.biometricAuthenticating
+                            ? 'جاري التحقق...'
+                            : 'الدخول بالبصمة'),
+                      ),
+                    ),
+                  ],                ],
               ),
             ),
           ),
